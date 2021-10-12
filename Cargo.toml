@@ -6,3 +6,7 @@ edition = "2018"
 
 [dependencies]
 stark-curve = { git = "https://github.com/ToposWare/stark-curve.git", branch = "main", default-features = false }
+
+[features]
+default = ["std"]
+std = []
