@@ -66,6 +66,36 @@ impl RescueHash {
 
         RescueDigest::new([state[0], state[1]])
     }
+
+    /// Serializes the current state to an array of bytes
+    pub fn to_bytes(&self) -> [u8; 136] {
+        let mut res = [0u8; 136];
+        assert_eq!(res.len(), STATE_WIDTH * 32 + 8);
+
+        for (index, elem) in self.state.iter().enumerate() {
+            res[index * 32..index * 32 + 32].copy_from_slice(&elem.to_bytes());
+        }
+        res[128..136].copy_from_slice(&(self.idx as u64).to_le_bytes());
+
+        res
+    }
+
+    /// Returns a RescueHash from an array of bytes
+    // TODO: create custom error enum including serialization
+    pub fn from_bytes(bytes: &[u8; 136]) -> Self {
+        let mut state = [FieldElement::zero(); STATE_WIDTH];
+        let mut array = [0u8; 32];
+        for index in 0..STATE_WIDTH {
+            array.copy_from_slice(&bytes[index * 32..index * 32 + 32]);
+            state[index] = FieldElement::from_bytes(&array).unwrap();
+        }
+
+        let mut array = [0u8; 8];
+        array.copy_from_slice(&bytes[128..136]);
+        let idx = u64::from_le_bytes(array) as usize;
+
+        Self { state, idx }
+    }
 }
 
 impl Hasher for RescueHash {
