@@ -7,7 +7,6 @@ pub mod sbox;
 /// Transcript for Rescue
 pub mod transcript;
 
-
 // RESCUE CONSTANTS
 // ================================================================================================
 

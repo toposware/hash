@@ -1,4 +1,4 @@
-use super::{STATE_WIDTH, NUM_HASH_ROUNDS};
+use super::{NUM_HASH_ROUNDS, STATE_WIDTH};
 use stark_curve::FieldElement;
 
 /// Additive Round Keys constants for Rescue,
