@@ -24,8 +24,9 @@ impl RescueDigest {
     pub fn digests_as_elements(digests: &[Self]) -> Vec<FieldElement> {
         let mut res = Vec::with_capacity(digests.len() * DIGEST_SIZE);
         for digest in digests {
-            res.push(digest.0[0]);
-            res.push(digest.0[1]);
+            for i in 0..DIGEST_SIZE {
+                res.push(digest.0[i]);
+            }
         }
 
         res
