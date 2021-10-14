@@ -1,5 +1,7 @@
 //! Hasher trait implementation for Rescue
 
+use core::convert::TryInto;
+
 use super::digest::RescueDigest;
 use super::{apply_permutation, DIGEST_SIZE, RATE_WIDTH, STATE_WIDTH};
 use crate::traits::Hasher;
@@ -121,29 +123,29 @@ impl Hasher for RescueHash {
         // absorb the element into the rate portion of the state. we use 31-byte chunks because
         // every 31-byte chunk is guaranteed to map to some field element.
         let mut i = 0;
-        let mut buf = [0_u8; 32];
+        let mut buf = [0u8; 32];
         for chunk in bytes.chunks(31) {
             // TODO: Can the alternative be reached if num_elements > RATE_WIDTH?
             if i < num_elements - 1 {
                 buf[..31].copy_from_slice(chunk);
             } else {
-                // if we are dealing with the last chunk, it may be smaller than 7 bytes long, so
+                // if we are dealing with the last chunk, it may be smaller than 31 bytes long, so
                 // we need to handle it slightly differently. we also append a byte with value 1
                 // to the end of the string; this pads the string in such a way that adding
                 // trailing zeros results in different hash
                 let chunk_len = chunk.len();
-                buf = [0_u8; 32];
+                buf = [0u8; 32];
                 buf[..chunk_len].copy_from_slice(chunk);
                 buf[chunk_len] = 1;
             }
 
-            // convert the bytes into a filed element and absorb it into the rate portion of the
+            // convert the bytes into a field element and absorb it into the rate portion of the
             // state; if the rate is filled up, apply the Rescue permutation and start absorbing
             // again from zero index.
-            let mut canonical = [0_u64; 4];
-            let mut component = [0_u8; 8];
+            let mut canonical = [0u64; 4];
+            let mut component = [0u8; 8];
             for part_num in 0..4 {
-                component.copy_from_slice(&buf[part_num*8..(part_num+1)*8]);
+                component.copy_from_slice(&buf[part_num * 8..(part_num + 1) * 8]);
                 canonical[part_num] = u64::from_le_bytes(component);
             }
             state[i] += FieldElement::new(canonical);
@@ -163,7 +165,7 @@ impl Hasher for RescueHash {
             apply_permutation(&mut state);
         }
 
-        // return the first DIEGEST_SIZE elements of the state as hash result
+        // return the first DIGEST_SIZE elements of the state as hash result
         let mut result = [FieldElement::zero(); DIGEST_SIZE];
         result.copy_from_slice(&state[..DIGEST_SIZE]);
         RescueDigest::new(result)
@@ -178,7 +180,18 @@ impl Hasher for RescueHash {
         RescueDigest::new([state[0], state[1]])
     }
 
-    fn merge_with_int(_seed: Self::Digest, _value: u64) -> Self::Digest {
-        unimplemented!("not implemented")
+    fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
+        // initialize the state as follows:
+        // - seed is copied into the first DIGEST_SIZE elements of the state.
+        // - copy the value into the DIGEST_SIZE + 1 state element
+        // - set the last capacity element to DIGEST_SIZE + 1 (the number of elements to be hashed).
+        let mut state = [FieldElement::zero(); STATE_WIDTH];
+        state[..DIGEST_SIZE].copy_from_slice(&seed.as_elements());
+        state[DIGEST_SIZE] = FieldElement::new([value, 0, 0, 0]);
+        state[STATE_WIDTH - 1] = FieldElement::new([DIGEST_SIZE as u64 + 1, 0, 0, 0]);
+
+        // apply the Rescue permutation and return the first DIGEST_SIZE elements of the state
+        apply_permutation(&mut state);
+        Self::Digest::new(state[..DIGEST_SIZE].try_into().unwrap())
     }
 }
