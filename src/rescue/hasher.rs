@@ -1,7 +1,7 @@
 //! Hasher trait implementation for Rescue
 
 use super::digest::RescueDigest;
-use super::{apply_permutation, RATE_WIDTH, STATE_WIDTH};
+use super::{apply_permutation, DIGEST_SIZE, RATE_WIDTH, STATE_WIDTH};
 use crate::traits::Hasher;
 
 use stark_curve::FieldElement;
@@ -101,8 +101,72 @@ impl RescueHash {
 impl Hasher for RescueHash {
     type Digest = RescueDigest;
 
-    fn hash(_bytes: &[u8]) -> Self::Digest {
-        unimplemented!("not implemented")
+    fn hash(bytes: &[u8]) -> Self::Digest {
+        // compute the number of elements required to represent the string; we will be processing
+        // the string in 31-byte chunks, thus the number of elements will be equal to the number
+        // of such chunks (including a potential partial chunk at the end).
+        let num_elements = if bytes.len() % 31 == 0 {
+            bytes.len() / 31
+        } else {
+            bytes.len() / 31 + 1
+        };
+
+        // initialize state to all zeros, except for the last element of the capacity part, which
+        // is set to the number of elements to be hashed. this is done so that adding zero elements
+        // at the end of the list always results in a different hash.
+        let mut state = [FieldElement::zero(); STATE_WIDTH];
+        state[STATE_WIDTH - 1] = FieldElement::new([num_elements as u64, 0, 0, 0]);
+
+        // break the string into 31-byte chunks, convert each chunk into a field element, and
+        // absorb the element into the rate portion of the state. we use 31-byte chunks because
+        // every 31-byte chunk is guaranteed to map to some field element.
+        let mut i = 0;
+        let mut buf = [0_u8; 32];
+        for chunk in bytes.chunks(31) {
+            // TODO: Can the alternative be reached if num_elements > RATE_WIDTH?
+            if i < num_elements - 1 {
+                buf[..31].copy_from_slice(chunk);
+            } else {
+                // if we are dealing with the last chunk, it may be smaller than 7 bytes long, so
+                // we need to handle it slightly differently. we also append a byte with value 1
+                // to the end of the string; this pads the string in such a way that adding
+                // trailing zeros results in different hash
+                let chunk_len = chunk.len();
+                buf = [0_u8; 32];
+                buf[..chunk_len].copy_from_slice(chunk);
+                buf[chunk_len] = 1;
+            }
+
+            // convert the bytes into a filed element and absorb it into the rate portion of the
+            // state; if the rate is filled up, apply the Rescue permutation and start absorbing
+            // again from zero index.
+            let mut canonical = [0_u64; 4];
+            let mut component = [0_u8; 8];
+            for part_num in 0..4 {
+                component.copy_from_slice(&buf[part_num*8..(part_num+1)*8]);
+                canonical[part_num] = u64::from_le_bytes(component);
+            }
+            state[i] += FieldElement::new(canonical);
+            i += 1;
+            if i % RATE_WIDTH == 0 {
+                apply_permutation(&mut state);
+                i = 0;
+            }
+        }
+
+        // if we absorbed some elements but didn't apply a permutation to them (would happen when
+        // the number of elements is not a multiple of RATE_WIDTH), apply the Rescue permutation.
+        // we don't need to apply any extra padding because we injected total number of elements
+        // in the input list into the capacity portion of the state during initialization.
+        if i > 0 {
+            // TODO: Does this also require padding?
+            apply_permutation(&mut state);
+        }
+
+        // return the first DIEGEST_SIZE elements of the state as hash result
+        let mut result = [FieldElement::zero(); DIGEST_SIZE];
+        result.copy_from_slice(&state[..DIGEST_SIZE]);
+        RescueDigest::new(result)
     }
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
