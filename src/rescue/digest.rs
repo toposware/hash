@@ -1,5 +1,8 @@
 //! Digest trait implementation for Rescue
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 use super::DIGEST_SIZE;
 use crate::traits::Digest;
 
