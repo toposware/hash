@@ -41,7 +41,8 @@ pub const NUM_HASH_ROUNDS: usize = 14;
 /// state elements with the Rescue S-Box.
 pub fn apply_sbox(state: &mut [FieldElement]) {
     for i in 0..STATE_WIDTH {
-        state[i] = state[i].exp(&[sbox::ALPHA as u64, 0, 0, 0]);
+        // alpha = 3
+        state[i] *= state[i].square();
     }
 }
 
@@ -51,7 +52,7 @@ pub fn apply_sbox(state: &mut [FieldElement]) {
 /// elements with the Rescue inverse S-Box.
 pub fn apply_inv_sbox(state: &mut [FieldElement]) {
     for i in 0..STATE_WIDTH {
-        state[i] = state[i].exp(&sbox::INV_ALPHA);
+        state[i] = state[i].exp_vartime(&sbox::INV_ALPHA);
     }
 }
 
