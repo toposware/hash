@@ -123,10 +123,10 @@ impl Hasher for RescueHash {
         // absorb the element into the rate portion of the state. we use 31-byte chunks because
         // every 31-byte chunk is guaranteed to map to some field element.
         let mut i = 0;
+        let mut num_hashed = 0;
         let mut buf = [0u8; 32];
         for chunk in bytes.chunks(31) {
-            // TODO: Can the alternative be reached if num_elements > RATE_WIDTH?
-            if i < num_elements - 1 {
+            if num_hashed + i < num_elements - 1 {
                 buf[..31].copy_from_slice(chunk);
             } else {
                 // if we are dealing with the last chunk, it may be smaller than 31 bytes long, so
@@ -153,15 +153,15 @@ impl Hasher for RescueHash {
             if i % RATE_WIDTH == 0 {
                 apply_permutation(&mut state);
                 i = 0;
+                num_hashed += RATE_WIDTH;
             }
         }
 
         // if we absorbed some elements but didn't apply a permutation to them (would happen when
         // the number of elements is not a multiple of RATE_WIDTH), apply the Rescue permutation.
         // we don't need to apply any extra padding because we injected total number of elements
-        // in the input list into the capacity portion of the state during initialization.
+        // in the input list into the last state register during initialization.
         if i > 0 {
-            // TODO: Does this also require padding?
             apply_permutation(&mut state);
         }
 
