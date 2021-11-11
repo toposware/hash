@@ -21,3 +21,6 @@ pub mod traits;
 
 /// The Rescue hash function
 pub mod rescue;
+
+/// The Rescue hash function over the cheetah basefield
+pub mod rescue_62_14_7;

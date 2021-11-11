@@ -6,7 +6,19 @@ edition = "2018"
 
 [dependencies]
 stark-curve = { git = "https://github.com/ToposWare/stark-curve.git", branch = "main", default-features = false }
+cheetah = { git = "https://github.com/ToposWare/cheetah.git", branch = "main", default-features = false }
 
 [features]
 default = ["std"]
 std = []
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "rescue-252-4-2"
+harness = false
+
+[[bench]]
+name = "rescue-62-14-7"
+harness = false
