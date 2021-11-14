@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 extern crate hash;
-use hash::rescue::{digest::RescueDigest, hasher::RescueHash};
+use hash::rescue_252_4_2::{digest::RescueDigest, hasher::RescueHash};
 use hash::traits::Hasher;
 
 fn criterion_benchmark(c: &mut Criterion) {
