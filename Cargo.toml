@@ -5,10 +5,12 @@ authors = ["Robin Salen <salenrobin@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-stark-curve = { git = "https://github.com/ToposWare/stark-curve.git", branch = "main", default-features = false }
-cheetah = { git = "https://github.com/ToposWare/cheetah.git", branch = "main", default-features = false }
+stark-curve = { git = "https://github.com/ToposWare/stark-curve.git", branch = "main", default-features = false, optional = true }
+cheetah = { git = "https://github.com/ToposWare/cheetah.git", branch = "main", default-features = false, optional = true }
 
 [features]
+f63 = ["cheetah"]
+f252 = ["stark-curve"]
 default = ["std"]
 std = []
 
@@ -18,7 +20,9 @@ criterion = "0.3"
 [[bench]]
 name = "rescue-252-4-2"
 harness = false
+required-features = ["f252"]
 
 [[bench]]
-name = "rescue-62-14-7"
+name = "rescue-63-14-7"
 harness = false
+required-features = ["f63"]
