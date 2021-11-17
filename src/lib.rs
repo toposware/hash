@@ -1,7 +1,5 @@
-//! This crate provides a Trait definition for implementing hash functions
-//! as well as a custom implementation of the Rescue hash function over the
-//! prime field of order
-//! p = 0x800000000000011000000000000000000000000000000000000000000000001.
+//! This crate provides Trait definitions for implementing
+//! algebraic cryptographic hash functions.
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(broken_intra_doc_links)]
@@ -19,5 +17,8 @@ pub mod error;
 /// Traits defining a hash function
 pub mod traits;
 
-/// The Rescue hash function
-pub mod rescue;
+/// The Rescue hash function over the StarkWare basefield
+pub mod rescue_252_4_2;
+
+/// The Rescue hash function over the cheetah basefield
+pub mod rescue_62_14_7;
