@@ -13,8 +13,6 @@ pub mod mds;
 pub mod round_constants;
 /// S-Box for Rescue
 pub mod sbox;
-/// Transcript for Rescue
-pub mod transcript;
 
 // RESCUE CONSTANTS
 // ================================================================================================

@@ -18,7 +18,9 @@ pub mod error;
 pub mod traits;
 
 /// The Rescue hash function over the StarkWare basefield
+#[cfg(feature = "f252")]
 pub mod rescue_252_4_2;
 
 /// The Rescue hash function over the cheetah basefield
+#[cfg(feature = "f63")]
 pub mod rescue_63_14_7;
