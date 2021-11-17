@@ -1,18 +1,7 @@
-use super::error::TranscriptError;
 use core::fmt::Debug;
-use stark_curve::FieldElement;
 
 // TODO: To support different kind of fields, we'd need them to
-// implement some Field Trait which we can refer to here, and
-// extend `BinaryDigest` trait with const generics for length specification.
-
-/// Trait for interacting with an IOP
-pub trait Transcript {
-    /// Read challenge from the transcript
-    fn read_challenge() -> Result<FieldElement, TranscriptError>;
-    /// Write challenge to the transcript
-    fn write_challenge() -> Result<FieldElement, TranscriptError>;
-}
+// implement some Field Trait which we can refer to here.
 
 /// Defines output type of a cryptographic hash function.
 pub trait Digest: Debug + Default + Copy + Clone + Eq + PartialEq + Send + Sync {
