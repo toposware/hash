@@ -4,6 +4,7 @@ use core::convert::TryInto;
 
 use super::digest::RescueDigest;
 use super::{apply_permutation, DIGEST_SIZE, RATE_WIDTH, STATE_WIDTH};
+use crate::error::SerializationError;
 use crate::traits::Hasher;
 
 use cheetah::Fp;
@@ -83,19 +84,22 @@ impl RescueHash {
     }
 
     /// Returns a RescueHash from an array of bytes
-    // TODO: create custom error enum including serialization
-    pub fn from_bytes(bytes: &[u8; 120]) -> Self {
+    pub fn from_bytes(bytes: &[u8; 120]) -> Result<Self, SerializationError> {
         let mut state = [Fp::zero(); STATE_WIDTH];
         let mut array = [0u8; 8];
         for index in 0..STATE_WIDTH {
             array.copy_from_slice(&bytes[index * 8..index * 8 + 8]);
-            state[index] = Fp::from_bytes(&array).unwrap();
+            let value = Fp::from_bytes(&array);
+            state[index] = match value.is_some().into() {
+                true => value.unwrap(),
+                false => return Err(SerializationError::InvalidFieldElement),
+            };
         }
 
         array.copy_from_slice(&bytes[112..120]);
         let idx = u64::from_le_bytes(array) as usize;
 
-        Self { state, idx }
+        Ok(Self { state, idx })
     }
 }
 
@@ -190,6 +194,8 @@ impl Hasher for RescueHash {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cheetah::group::ff::Field;
+    use rand::thread_rng;
 
     #[test]
     fn test_rescue_hash() {
@@ -410,5 +416,38 @@ mod tests {
             assert_eq!(expected, hasher.finalize().as_elements());
             assert_eq!(expected, RescueHash::digest(input).as_elements());
         }
+    }
+
+    #[test]
+    fn test_serialization() {
+        let mut rng = thread_rng();
+
+        for _ in 0..100 {
+            let mut data = [Fp::zero(); DIGEST_SIZE];
+            for e in data.iter_mut() {
+                *e = Fp::random(&mut rng);
+            }
+
+            let mut hasher = RescueHash::new();
+            hasher.update(&data);
+
+            let bytes = hasher.to_bytes();
+
+            assert_eq!(hasher, RescueHash::from_bytes(&bytes).unwrap());
+        }
+
+        // Test invalid encoding
+        let mut data = [Fp::zero(); DIGEST_SIZE];
+        for e in data.iter_mut() {
+            *e = Fp::random(&mut rng);
+        }
+
+        let mut hasher = RescueHash::new();
+        hasher.update(&data);
+
+        let mut bytes = hasher.to_bytes();
+        bytes[7] = 0b1111_1111;
+
+        assert!(RescueHash::from_bytes(&bytes).is_err());
     }
 }
