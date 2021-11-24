@@ -16,14 +16,19 @@ pub struct RescueHash {
     idx: usize,
 }
 
-impl RescueHash {
-    /// Returns a new hasher with the state initialized to all zeros.
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+impl Default for RescueHash {
+    fn default() -> Self {
         Self {
             state: [Fp::zero(); STATE_WIDTH],
             idx: 0,
         }
+    }
+}
+
+impl RescueHash {
+    /// Returns a new hasher with the state initialized to all zeros.
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Absorbs data into the hasher state.
