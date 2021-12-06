@@ -41,7 +41,6 @@ fn square_assign_multi(n: &mut Fp, num_times: usize) {
 }
 
 #[inline(always)]
-#[allow(clippy::needless_range_loop)]
 /// Applies exponentiation of the current hash
 /// state elements with the Rescue S-Box.
 pub fn apply_sbox(state: &mut [Fp]) {
@@ -52,7 +51,6 @@ pub fn apply_sbox(state: &mut [Fp]) {
 }
 
 #[inline(always)]
-#[allow(clippy::needless_range_loop)]
 /// Applies exponentiation of the current hash state
 /// elements with the Rescue inverse S-Box.
 pub fn apply_inv_sbox(state: &mut [Fp]) {
@@ -87,7 +85,6 @@ pub fn apply_inv_sbox(state: &mut [Fp]) {
 }
 
 #[inline(always)]
-#[allow(clippy::needless_range_loop)]
 /// Applies matrix-vector multiplication of the current
 /// hash state with the Rescue MDS matrix.
 pub fn apply_mds(state: &mut [Fp]) {
@@ -106,7 +103,6 @@ pub fn apply_mds(state: &mut [Fp]) {
 }
 
 #[inline(always)]
-#[allow(clippy::needless_range_loop)]
 /// Applies matrix-vector multiplication of the current
 /// hash state with the inverse Rescue MDS matrix.
 pub fn apply_inv_mds(state: &mut [Fp]) {
