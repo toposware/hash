@@ -89,14 +89,9 @@ pub fn apply_inv_sbox(state: &mut [Fp]) {
 /// hash state with the Rescue MDS matrix.
 pub fn apply_mds(state: &mut [Fp]) {
     let mut result = [Fp::zero(); STATE_WIDTH];
-    let mut temp = [Fp::zero(); STATE_WIDTH];
     for i in 0..STATE_WIDTH {
         for j in 0..STATE_WIDTH {
-            temp[j] = mds::MDS[i * STATE_WIDTH + j] * state[j];
-        }
-
-        for j in 0..STATE_WIDTH {
-            result[i] += temp[j];
+            result[i] += mds::MDS[i * STATE_WIDTH + j] * state[j];
         }
     }
     state.copy_from_slice(&result);
@@ -107,14 +102,9 @@ pub fn apply_mds(state: &mut [Fp]) {
 /// hash state with the inverse Rescue MDS matrix.
 pub fn apply_inv_mds(state: &mut [Fp]) {
     let mut result = [Fp::zero(); STATE_WIDTH];
-    let mut temp = [Fp::zero(); STATE_WIDTH];
     for i in 0..STATE_WIDTH {
         for j in 0..STATE_WIDTH {
-            temp[j] = mds::INV_MDS[i * STATE_WIDTH + j] * state[j];
-        }
-
-        for j in 0..STATE_WIDTH {
-            result[i] += temp[j];
+            result[i] += mds::INV_MDS[i * STATE_WIDTH + j] * state[j];
         }
     }
     state.copy_from_slice(&result);
