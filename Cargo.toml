@@ -17,6 +17,11 @@ criterion = "0.3"
 rand = "0.8"
 
 [[bench]]
+name = "rescue-63-8-4"
+harness = false
+required-features = ["f63"]
+
+[[bench]]
 name = "rescue-63-14-7"
 harness = false
 required-features = ["f63"]
