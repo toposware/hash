@@ -6,6 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! An implementation of different cryptographic hash function.
+
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(broken_intra_doc_links)]
 #![deny(missing_debug_implementations)]
