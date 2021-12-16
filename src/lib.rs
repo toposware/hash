@@ -1,5 +1,12 @@
-//! This crate provides Trait definitions for implementing
-//! algebraic cryptographic hash functions.
+// Copyright (c) 2021 Toposware, Inc.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! An implementation of different cryptographic hash function.
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(broken_intra_doc_links)]

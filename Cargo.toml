@@ -1,8 +1,15 @@
 [package]
 name = "hash"
+description = "Implementation of cryptographic hash functions"
+authors = ["Toposware Developers <dev@toposware.com>"]
+homepage = "https://github.com/ToposWare/hash"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ToposWare/hash"
 version = "0.1.0"
-authors = ["Robin Salen <salenrobin@gmail.com>"]
 edition = "2018"
+readme = "README.md"
+categories = ["cryptography", "no-std"]
+keywords = ["cryptography", "crypto", "hash"]
 
 [dependencies]
 cheetah = { git = "https://github.com/ToposWare/cheetah.git", branch = "main", default-features = false, optional = true }
