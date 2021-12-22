@@ -105,19 +105,6 @@ pub fn apply_mds(state: &mut [Fp]) {
     state.copy_from_slice(&result);
 }
 
-#[inline(always)]
-/// Applies matrix-vector multiplication of the current
-/// hash state with the inverse Rescue MDS matrix.
-pub fn apply_inv_mds(state: &mut [Fp]) {
-    let mut result = [Fp::zero(); STATE_WIDTH];
-    for i in 0..STATE_WIDTH {
-        for j in 0..STATE_WIDTH {
-            result[i] += mds::INV_MDS[i * STATE_WIDTH + j] * state[j];
-        }
-    }
-    state.copy_from_slice(&result);
-}
-
 // RESCUE PERMUTATION
 // ================================================================================================
 
