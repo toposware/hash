@@ -105,11 +105,12 @@ pub fn apply_inv_sbox(state: &mut [Fp; STATE_WIDTH]) {
 /// hash state with the Rescue MDS matrix.
 pub fn apply_mds(state: &mut [Fp; STATE_WIDTH]) {
     let mut result = [Fp::zero(); STATE_WIDTH];
-    for i in 0..STATE_WIDTH {
-        for j in 0..STATE_WIDTH {
-            result[i] += mds::MDS[i * STATE_WIDTH + j] * state[j];
+    for (i, r) in result.iter_mut().enumerate() {
+        for (j, s) in state.iter().enumerate() {
+            *r += mds::MDS[i * STATE_WIDTH + j] * s;
         }
     }
+
     state.copy_from_slice(&result);
 }
 
