@@ -42,60 +42,68 @@ pub const NUM_HASH_ROUNDS: usize = 7;
 // ================================================================================================
 
 #[inline(always)]
-fn square_assign_multi(n: &mut Fp, num_times: usize) {
-    for _ in 0..num_times {
-        *n = n.square();
+/// Squares each element of `base` M times, then performs
+/// a product term by term with `tail`.
+fn square_assign_multi_and_multiply<const N: usize, const M: usize>(
+    base: [Fp; N],
+    tail: [Fp; N],
+) -> [Fp; N] {
+    let mut result = base;
+    for _ in 0..M {
+        result.iter_mut().for_each(|r| *r = r.square());
     }
+
+    result.iter_mut().zip(tail).for_each(|(r, t)| *r *= t);
+    result
 }
 
 #[inline(always)]
 /// Applies exponentiation of the current hash
 /// state elements with the Rescue S-Box.
-pub fn apply_sbox(state: &mut [Fp]) {
-    for i in 0..STATE_WIDTH {
-        // alpha = 3
-        state[i] *= state[i].square();
-    }
+pub fn apply_sbox(state: &mut [Fp; STATE_WIDTH]) {
+    state.iter_mut().for_each(|v| {
+        *v *= v.square();
+    });
 }
 
 #[inline(always)]
 /// Applies exponentiation of the current hash state
 /// elements with the Rescue inverse S-Box.
-pub fn apply_inv_sbox(state: &mut [Fp]) {
+pub fn apply_inv_sbox(state: &mut [Fp; STATE_WIDTH]) {
     // found using https://github.com/kwantam/addchain for INV_ALPHA
-    for i in 0..STATE_WIDTH {
-        let mut t1 = state[i]; //           0: 1
-        let mut t0 = t1.square(); //        1: 2
-        let t3 = t0.square(); //            2: 4
-        let mut t2 = t3 * t0; //            3: 6
-        t2 = t2 * t3; //                    4: 10
-        square_assign_multi(&mut t2, 2); // 6: 40
-        t1 *= t2; //                        7: 41
-        t2 *= t0; //                        8: 42
-        t1 *= t0; //                        9: 43
-        t2 *= t1; //                        10: 85
-        t0 *= t2; //                        11: 87
-        square_assign_multi(&mut t0, 8); // 19: 22272
-        t0 *= t2; //                        20: 22357
-        square_assign_multi(&mut t0, 8); // 28: 5723392
-        t0 *= t2; //                        29: 5723477
-        square_assign_multi(&mut t0, 8); // 37: 1465210112
-        t0 *= t2; //                        38: 1465210197
-        square_assign_multi(&mut t0, 8); // 46: 375093810432
-        t0 *= t2; //                        47: 375093810517
-        square_assign_multi(&mut t0, 8); // 55: 96024015492352
-        t0 *= t2; //                        56: 96024015492437
-        square_assign_multi(&mut t0, 8); // 64: 24582147966063872
-        t0 *= t2; //                        65: 24582147966063957
-        square_assign_multi(&mut t0, 7); // 72: 3146514939656186496
-        state[i] = t0 * t1; //              73: 3146514939656186539
-    }
+
+    let mut t0 = *state;
+    let mut t1 = *state;
+    t0.iter_mut().for_each(|t| *t = t.square());
+
+    let mut t3 = t0;
+    t3.iter_mut().for_each(|t| *t = t.square());
+
+    let mut t2 = square_assign_multi_and_multiply::<STATE_WIDTH, 1>(t3, t0);
+    let t4 = square_assign_multi_and_multiply::<STATE_WIDTH, 1>(t1, t1);
+
+    t1 = square_assign_multi_and_multiply::<STATE_WIDTH, 2>(t2, t1);
+
+    let mut t5 = t0;
+    t5.iter_mut().zip(t1).for_each(|(r, t)| *r *= t);
+
+    t2 = square_assign_multi_and_multiply::<STATE_WIDTH, 1>(t1, t4);
+    t0.iter_mut().zip(t2).for_each(|(r, t)| *r *= t);
+
+    t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
+    t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
+    t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
+    t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
+    t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
+    t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
+
+    *state = square_assign_multi_and_multiply::<STATE_WIDTH, 7>(t0, t5);
 }
 
 #[inline(always)]
 /// Applies matrix-vector multiplication of the current
 /// hash state with the Rescue MDS matrix.
-pub fn apply_mds(state: &mut [Fp]) {
+pub fn apply_mds(state: &mut [Fp; STATE_WIDTH]) {
     let mut result = [Fp::zero(); STATE_WIDTH];
     for i in 0..STATE_WIDTH {
         for j in 0..STATE_WIDTH {
@@ -118,7 +126,7 @@ pub fn apply_permutation(state: &mut [Fp; STATE_WIDTH]) {
 /// Rescue-XLIX round function;
 /// implementation based on algorithm 3 of <https://eprint.iacr.org/2020/1143.pdf>
 #[inline(always)]
-pub fn apply_round(state: &mut [Fp], step: usize) {
+pub fn apply_round(state: &mut [Fp; STATE_WIDTH], step: usize) {
     // determine which round constants to use
     let ark = round_constants::ARK[step % NUM_HASH_ROUNDS];
 
