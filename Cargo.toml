@@ -15,7 +15,7 @@ keywords = ["cryptography", "crypto", "hash"]
 cheetah = { git = "https://github.com/ToposWare/cheetah.git", branch = "main", default-features = false, optional = true }
 
 [features]
-f63 = ["cheetah"]
+f64 = ["cheetah"]
 default = ["std"]
 std = []
 
@@ -24,11 +24,11 @@ criterion = "0.3"
 rand = "0.8"
 
 [[bench]]
-name = "rescue-63-8-4"
+name = "rescue-64-8-4"
 harness = false
-required-features = ["f63"]
+required-features = ["f64"]
 
 [[bench]]
-name = "rescue-63-14-7"
+name = "rescue-64-14-7"
 harness = false
-required-features = ["f63"]
+required-features = ["f64"]
