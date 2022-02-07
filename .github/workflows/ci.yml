@@ -23,7 +23,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --verbose --release --all
+          args: --verbose --release --all --all-features
 
   build:
     name: Build target ${{ matrix.target }}
@@ -73,7 +73,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --all --benches
+          args: --all --benches --all-features
 
   clippy:
     name: Clippy
@@ -96,7 +96,7 @@ jobs:
         with:
           name: Clippy
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets -- -D warnings
+          args: --all-targets --all-features -- -D warnings
 
   fmt:
     name: Rustfmt

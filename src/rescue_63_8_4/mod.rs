@@ -53,7 +53,7 @@ fn square_assign_multi_and_multiply<const N: usize, const M: usize>(
         result.iter_mut().for_each(|r| *r = r.square());
     }
 
-    result.iter_mut().zip(tail).for_each(|(r, t)| *r *= t);
+    result.iter_mut().zip(&tail).for_each(|(r, t)| *r *= t);
     result
 }
 
@@ -85,10 +85,10 @@ pub fn apply_inv_sbox(state: &mut [Fp; STATE_WIDTH]) {
     t1 = square_assign_multi_and_multiply::<STATE_WIDTH, 2>(t2, t1);
 
     let mut t5 = t0;
-    t5.iter_mut().zip(t1).for_each(|(r, t)| *r *= t);
+    t5.iter_mut().zip(&t1).for_each(|(r, t)| *r *= t);
 
     t2 = square_assign_multi_and_multiply::<STATE_WIDTH, 1>(t1, t4);
-    t0.iter_mut().zip(t2).for_each(|(r, t)| *r *= t);
+    t0.iter_mut().zip(&t2).for_each(|(r, t)| *r *= t);
 
     t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
     t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
@@ -105,11 +105,12 @@ pub fn apply_inv_sbox(state: &mut [Fp; STATE_WIDTH]) {
 /// hash state with the Rescue MDS matrix.
 pub fn apply_mds(state: &mut [Fp; STATE_WIDTH]) {
     let mut result = [Fp::zero(); STATE_WIDTH];
-    for i in 0..STATE_WIDTH {
-        for j in 0..STATE_WIDTH {
-            result[i] += mds::MDS[i * STATE_WIDTH + j] * state[j];
+    for (i, r) in result.iter_mut().enumerate() {
+        for (j, s) in state.iter().enumerate() {
+            *r += mds::MDS[i * STATE_WIDTH + j] * s;
         }
     }
+
     state.copy_from_slice(&result);
 }
 
