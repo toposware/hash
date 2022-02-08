@@ -12,13 +12,22 @@ extern crate hash;
 use cheetah::Fp;
 use hash::rescue_64_14_7::{digest::RescueDigest, hasher::RescueHash};
 use hash::traits::Hasher;
+use rand::rngs::OsRng;
 use rand::thread_rng;
 use rand::RngCore;
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let v: [RescueDigest; 2] = [RescueHash::hash(&[1u8]), RescueHash::hash(&[2u8])];
     c.bench_function("rescue-64-14-7 - merge", |bench| {
+        let v: [RescueDigest; 2] = [RescueHash::hash(&[1u8]), RescueHash::hash(&[2u8])];
         bench.iter(|| RescueHash::merge(black_box(&v)))
+    });
+
+    c.bench_function("rescue-64-14-7 - hash 25 Fp elements", |bench| {
+        let mut v = [Fp::zero(); 25];
+        for e in v.iter_mut() {
+            *e = Fp::random(OsRng);
+        }
+        bench.iter(|| RescueHash::digest(black_box(&v)))
     });
 
     c.bench_function("rescue-64-14-7 - hash 10KB", |bench| {
