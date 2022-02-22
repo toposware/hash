@@ -62,7 +62,9 @@ fn square_assign_multi_and_multiply<const N: usize, const M: usize>(
 /// state elements with the Rescue S-Box.
 pub fn apply_sbox(state: &mut [Fp; STATE_WIDTH]) {
     state.iter_mut().for_each(|v| {
-        *v *= v.square();
+        let t2 = v.square();
+        let t4 = t2.square();
+        *v *= t2 * t4;
     });
 }
 
@@ -70,34 +72,23 @@ pub fn apply_sbox(state: &mut [Fp; STATE_WIDTH]) {
 /// Applies exponentiation of the current hash state
 /// elements with the Rescue inverse S-Box.
 pub fn apply_inv_sbox(state: &mut [Fp; STATE_WIDTH]) {
-    // found using https://github.com/kwantam/addchain for INV_ALPHA
-
-    let mut t0 = *state;
     let mut t1 = *state;
-    t0.iter_mut().for_each(|t| *t = t.square());
+    t1.iter_mut().for_each(|t| *t = t.square());
 
-    let mut t3 = t0;
-    t3.iter_mut().for_each(|t| *t = t.square());
+    let mut t2 = t1;
+    t2.iter_mut().for_each(|t| *t = t.square());
 
-    let mut t2 = square_assign_multi_and_multiply::<STATE_WIDTH, 1>(t3, t0);
-    let t4 = square_assign_multi_and_multiply::<STATE_WIDTH, 1>(t1, t1);
+    let t3 = square_assign_multi_and_multiply::<STATE_WIDTH, 3>(t2, t2);
+    let t4 = square_assign_multi_and_multiply::<STATE_WIDTH, 6>(t3, t3);
+    let t4 = square_assign_multi_and_multiply::<STATE_WIDTH, 12>(t4, t4);
+    let t5 = square_assign_multi_and_multiply::<STATE_WIDTH, 6>(t4, t3);
+    let t6 = square_assign_multi_and_multiply::<STATE_WIDTH, 31>(t5, t5);
 
-    t1 = square_assign_multi_and_multiply::<STATE_WIDTH, 2>(t2, t1);
-
-    let mut t5 = t0;
-    t5.iter_mut().zip(&t1).for_each(|(r, t)| *r *= t);
-
-    t2 = square_assign_multi_and_multiply::<STATE_WIDTH, 1>(t1, t4);
-    t0.iter_mut().zip(&t2).for_each(|(r, t)| *r *= t);
-
-    t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
-    t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
-    t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
-    t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
-    t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
-    t0 = square_assign_multi_and_multiply::<STATE_WIDTH, 8>(t0, t2);
-
-    *state = square_assign_multi_and_multiply::<STATE_WIDTH, 7>(t0, t5);
+    for (i, s) in state.iter_mut().enumerate() {
+        let a = (t6[i].square() * t5[i]).square().square();
+        let b = t1[i] * t2[i] * *s;
+        *s = a * b;
+    }
 }
 
 #[inline(always)]

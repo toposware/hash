@@ -7,7 +7,7 @@
 // except according to those terms.
 
 /// Base power map of the Rescue S-Box
-pub const ALPHA: u32 = 3;
+pub const ALPHA: u32 = 7;
 
 /// Inverse power map
-pub const INV_ALPHA: u64 = 3146514939656186539;
+pub const INV_ALPHA: u64 = 10540996611094048183;
