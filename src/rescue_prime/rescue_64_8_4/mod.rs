@@ -140,3 +140,43 @@ pub(crate) fn apply_round(state: &mut [Fp; STATE_WIDTH], step: usize) {
         state[i] += ark[STATE_WIDTH + i];
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::thread_rng;
+
+    #[test]
+    fn test_rescue_sbox() {
+        let mut state = [Fp::zero(); STATE_WIDTH];
+        let mut rng = thread_rng();
+
+        for _ in 0..100 {
+            for s in state.iter_mut() {
+                *s = Fp::random(&mut rng);
+            }
+
+            // Check Forward S-Box
+
+            let mut state_2 = state;
+            state_2.iter_mut().for_each(|v| {
+                *v = v.exp(sbox::ALPHA as u64);
+            });
+
+            apply_sbox(&mut state);
+
+            assert_eq!(state, state_2);
+
+            // Check Backward S-Box
+
+            let mut state_2 = state;
+            state_2.iter_mut().for_each(|v| {
+                *v = v.exp(sbox::INV_ALPHA);
+            });
+
+            apply_inv_sbox(&mut state);
+
+            assert_eq!(state, state_2);
+        }
+    }
+}
