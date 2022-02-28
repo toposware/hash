@@ -11,6 +11,7 @@
 use core::convert::TryInto;
 
 use super::digest::RescueDigest;
+use super::RescuePrimeHasher;
 use super::{apply_permutation, DIGEST_SIZE, RATE_WIDTH, STATE_WIDTH};
 use crate::error::SerializationError;
 use crate::traits::Hasher;
@@ -34,32 +35,6 @@ impl Default for RescueHash {
 }
 
 impl RescueHash {
-    /// Returns a new hasher with the state initialized to all zeros.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Absorbs data into the hasher state.
-    pub fn update(&mut self, data: &[Fp]) {
-        for &element in data {
-            self.state[self.idx] += element;
-            self.idx += 1;
-            if self.idx % RATE_WIDTH == 0 {
-                apply_permutation(&mut self.state);
-                self.idx = 0;
-            }
-        }
-    }
-
-    /// Returns hash of the data absorbed into the hasher.
-    pub fn finalize(mut self) -> RescueDigest {
-        if self.idx > 0 {
-            // TODO: apply proper padding
-            apply_permutation(&mut self.state);
-        }
-        RescueDigest::new(self.state[..DIGEST_SIZE].try_into().unwrap())
-    }
-
     /// Serializes the current state to an array of bytes
     pub fn to_bytes(&self) -> [u8; 120] {
         let mut res = [0u8; 120];
@@ -185,6 +160,82 @@ impl Hasher<Fp> for RescueHash {
         apply_permutation(&mut state);
 
         RescueDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
+    }
+}
+
+impl RescuePrimeHasher<Fp> for RescueHash {
+    /// Initializes a new instance of the permutation.
+    fn new() -> Self {
+        Self::default()
+    }
+
+    /// Absorbs a sequence of bytes.
+    fn absorb(&mut self, input: &[u8]) {
+        // compute the number of elements required to represent the string; we will be processing
+        // the string in 7-byte chunks, thus the number of elements will be equal to the number
+        // of such chunks (including a potential partial chunk at the end).
+        let num_elements = if input.len() % 7 == 0 {
+            input.len() / 7
+        } else {
+            input.len() / 7 + 1
+        };
+
+        // break the string into 7-byte chunks, convert each chunk into a field element, and
+        // absorb the element into the rate portion of the state. we use 7-byte chunks because
+        // every 7-byte chunk is guaranteed to map to some field element.
+        let mut num_hashed = 0;
+        let mut buf = [0u8; 8];
+        for chunk in input.chunks(7) {
+            if num_hashed + self.idx < num_elements - 1 {
+                buf[..7].copy_from_slice(chunk);
+            } else {
+                // if we are dealing with the last chunk, it may be smaller than 7 bytes long, so
+                // we need to handle it slightly differently. we also append a byte with value 1
+                // to the end of the string; this pads the string in such a way that adding
+                // trailing zeros results in different hash
+                let chunk_len = chunk.len();
+                buf = [0u8; 8];
+                buf[..chunk_len].copy_from_slice(chunk);
+                buf[chunk_len] = 1;
+            }
+
+            // convert the bytes into a field element and absorb it into the rate portion of the
+            // state; if the rate is filled up, apply the Rescue permutation and start absorbing
+            // again from zero index.
+            self.state[self.idx] += Fp::new(u64::from_le_bytes(buf));
+            self.idx += 1;
+            if self.idx % RATE_WIDTH == 0 {
+                self.apply_permutation();
+                self.idx = 0;
+                num_hashed += RATE_WIDTH;
+            }
+        }
+    }
+
+    /// Absorbs a sequence of field elements.
+    fn absorb_field(&mut self, input: &[Fp]) {
+        for &element in input {
+            self.state[self.idx] += element;
+            self.idx += 1;
+            if self.idx % RATE_WIDTH == 0 {
+                self.apply_permutation();
+                self.idx = 0;
+            }
+        }
+    }
+
+    /// Applies Rescue-XLIX permutation to the provided state.
+    fn apply_permutation(&mut self) {
+        apply_permutation(&mut self.state);
+    }
+
+    /// Returns hash of the data absorbed into the hasher.
+    fn finalize(&mut self) -> Self::Digest {
+        if self.idx > 0 {
+            // TODO: apply proper padding
+            self.apply_permutation()
+        }
+        RescueDigest::new(self.state[..DIGEST_SIZE].try_into().unwrap())
     }
 }
 
@@ -407,7 +458,7 @@ mod tests {
 
         for (input, expected) in input_data.iter().zip(output_data) {
             let mut hasher = RescueHash::new();
-            hasher.update(input);
+            hasher.absorb_field(input);
 
             assert_eq!(expected, hasher.finalize().as_elements());
             assert_eq!(expected, RescueHash::hash_field(input).as_elements());
@@ -425,7 +476,7 @@ mod tests {
             }
 
             let mut hasher = RescueHash::new();
-            hasher.update(&data);
+            hasher.absorb_field(&data);
 
             let bytes = hasher.to_bytes();
 
@@ -439,7 +490,7 @@ mod tests {
         }
 
         let mut hasher = RescueHash::new();
-        hasher.update(&data);
+        hasher.absorb_field(&data);
 
         let bytes = [255u8; 120];
 

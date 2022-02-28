@@ -6,6 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+mod traits;
+
 /// The Rescue hash function over Cheetah's small
 /// primefield with state width 14 and rate 7.
 #[cfg(feature = "f64")]

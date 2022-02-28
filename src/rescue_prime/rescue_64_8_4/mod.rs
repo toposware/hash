@@ -9,6 +9,7 @@
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
+use super::traits::RescuePrimeHasher;
 use cheetah::Fp;
 
 /// Digest for Rescue
