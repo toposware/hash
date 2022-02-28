@@ -422,6 +422,25 @@ mod tests {
     }
 
     #[test]
+    fn test_sequential_hashing() {
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let mut data = [Fp::zero(); 100];
+            for e in data.iter_mut() {
+                *e = Fp::random(&mut rng);
+            }
+
+            let mut hasher = RescueHash::new();
+            for chunk in data.chunks(10) {
+                hasher.absorb_field(chunk);
+            }
+
+            assert_eq!(hasher.finalize(), RescueHash::hash_field(&data));
+        }
+    }
+
+    #[test]
     fn test_serialization() {
         let mut rng = OsRng;
 
