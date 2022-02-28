@@ -242,7 +242,7 @@ impl RescuePrimeHasher<Fp> for RescueHash {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::thread_rng;
+    use rand_core::OsRng;
 
     #[test]
     fn test_rescue_hash() {
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_serialization() {
-        let mut rng = thread_rng();
+        let mut rng = OsRng;
 
         for _ in 0..100 {
             let mut data = [Fp::zero(); DIGEST_SIZE];

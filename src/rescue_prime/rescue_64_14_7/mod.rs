@@ -144,12 +144,12 @@ pub(crate) fn apply_round(state: &mut [Fp; STATE_WIDTH], step: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::thread_rng;
+    use rand_core::OsRng;
 
     #[test]
     fn test_rescue_sbox() {
         let mut state = [Fp::zero(); STATE_WIDTH];
-        let mut rng = thread_rng();
+        let mut rng = OsRng;
 
         for _ in 0..100 {
             for s in state.iter_mut() {
