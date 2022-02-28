@@ -11,6 +11,7 @@
 use core::convert::TryInto;
 
 use super::digest::RescueDigest;
+use super::RescuePrimeHasher;
 use super::{apply_permutation, DIGEST_SIZE, RATE_WIDTH, STATE_WIDTH};
 use crate::error::SerializationError;
 use crate::traits::Hasher;
@@ -34,55 +35,6 @@ impl Default for RescueHash {
 }
 
 impl RescueHash {
-    /// Returns a new hasher with the state initialized to all zeros.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Absorbs data into the hasher state.
-    pub fn update(&mut self, data: &[Fp]) {
-        for &element in data {
-            self.state[self.idx] += element;
-            self.idx += 1;
-            if self.idx % RATE_WIDTH == 0 {
-                apply_permutation(&mut self.state);
-                self.idx = 0;
-            }
-        }
-    }
-
-    /// Returns hash of the data absorbed into the hasher.
-    pub fn finalize(mut self) -> RescueDigest {
-        if self.idx > 0 {
-            // TODO: apply proper padding
-            apply_permutation(&mut self.state);
-        }
-        RescueDigest::new(self.state[..DIGEST_SIZE].try_into().unwrap())
-    }
-
-    /// Returns hash of the provided data.
-    pub fn digest(data: &[Fp]) -> RescueDigest {
-        // initialize state to all zeros
-        let mut state = [Fp::zero(); STATE_WIDTH];
-
-        let mut i = 0;
-        for &element in data.iter() {
-            state[i] += element;
-            i += 1;
-            if i % RATE_WIDTH == 0 {
-                apply_permutation(&mut state);
-                i = 0;
-            }
-        }
-
-        if i > 0 {
-            // TODO: apply proper padding
-            apply_permutation(&mut state);
-        }
-
-        RescueDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
-    }
-
     /// Serializes the current state to an array of bytes
     pub fn to_bytes(&self) -> [u8; 72] {
         let mut res = [0u8; 72];
@@ -116,7 +68,7 @@ impl RescueHash {
     }
 }
 
-impl Hasher for RescueHash {
+impl Hasher<Fp> for RescueHash {
     type Digest = RescueDigest;
 
     fn hash(bytes: &[u8]) -> Self::Digest {
@@ -179,6 +131,36 @@ impl Hasher for RescueHash {
         RescueDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
     }
 
+    fn hash_field(bytes: &[Fp]) -> Self::Digest {
+        // initialize state to all zeros
+        let mut state = [Fp::zero(); STATE_WIDTH];
+
+        let mut i = 0;
+        for &element in bytes.iter() {
+            state[i] += element;
+            i += 1;
+            if i % RATE_WIDTH == 0 {
+                apply_permutation(&mut state);
+                i = 0;
+            }
+        }
+
+        // Apply padding specification from https://eprint.iacr.org/2020/1143.pdf, Algorithm 2
+        if i > 0 {
+            state[i] += Fp::one();
+            i += 1;
+
+            while i % RATE_WIDTH != 0 {
+                state[i] += Fp::zero();
+                i += 1;
+            }
+
+            apply_permutation(&mut state);
+        }
+
+        RescueDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
+    }
+
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
         let mut state = [Fp::zero(); STATE_WIDTH];
         state[..RATE_WIDTH].copy_from_slice(&values[0].as_elements());
@@ -187,27 +169,97 @@ impl Hasher for RescueHash {
 
         RescueDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
     }
+}
 
-    fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
-        // initialize the state as follows:
-        // - seed is copied into the first DIGEST_SIZE elements of the state.
-        // - copy the value into the DIGEST_SIZE + 1 state element
-        // - set the last capacity element to DIGEST_SIZE + 1 (the number of elements to be hashed).
-        let mut state = [Fp::zero(); STATE_WIDTH];
-        state[..DIGEST_SIZE].copy_from_slice(&seed.as_elements());
-        state[DIGEST_SIZE] = Fp::new(value);
-        state[STATE_WIDTH - 1] = Fp::new(DIGEST_SIZE as u64 + 1);
+impl RescuePrimeHasher<Fp> for RescueHash {
+    /// Initializes a new instance of the permutation.
+    fn new() -> Self {
+        Self::default()
+    }
 
-        // apply the Rescue permutation and return the first DIGEST_SIZE elements of the state
-        apply_permutation(&mut state);
-        Self::Digest::new(state[..DIGEST_SIZE].try_into().unwrap())
+    /// Absorbs a sequence of bytes.
+    fn absorb(&mut self, input: &[u8]) {
+        // compute the number of elements required to represent the string; we will be processing
+        // the string in 7-byte chunks, thus the number of elements will be equal to the number
+        // of such chunks (including a potential partial chunk at the end).
+        let num_elements = if input.len() % 7 == 0 {
+            input.len() / 7
+        } else {
+            input.len() / 7 + 1
+        };
+
+        // break the string into 7-byte chunks, convert each chunk into a field element, and
+        // absorb the element into the rate portion of the state. we use 7-byte chunks because
+        // every 7-byte chunk is guaranteed to map to some field element.
+        let mut num_hashed = 0;
+        let mut buf = [0u8; 8];
+        for chunk in input.chunks(7) {
+            if num_hashed + self.idx < num_elements - 1 {
+                buf[..7].copy_from_slice(chunk);
+            } else {
+                // if we are dealing with the last chunk, it may be smaller than 7 bytes long, so
+                // we need to handle it slightly differently. we also append a byte with value 1
+                // to the end of the string; this pads the string in such a way that adding
+                // trailing zeros results in different hash
+
+                // Compatibility with the binary hash() is not possible because this would require
+                // knowing the total input sequence length at initialization, to write in the capacity
+                // registers. Hence, we prevent length-extension attacks on every absorbed chunk
+                let chunk_len = chunk.len();
+                buf = [0u8; 8];
+                buf[..chunk_len].copy_from_slice(chunk);
+                buf[chunk_len] = 1;
+            }
+
+            // convert the bytes into a field element and absorb it into the rate portion of the
+            // state; if the rate is filled up, apply the Rescue permutation and start absorbing
+            // again from zero index.
+            self.state[self.idx] += Fp::new(u64::from_le_bytes(buf));
+            self.idx += 1;
+            if self.idx % RATE_WIDTH == 0 {
+                apply_permutation(&mut self.state);
+                self.idx = 0;
+                num_hashed += RATE_WIDTH;
+            }
+        }
+    }
+
+    /// Absorbs a sequence of field elements.
+    fn absorb_field(&mut self, input: &[Fp]) {
+        for &element in input {
+            self.state[self.idx] += element;
+            self.idx += 1;
+            if self.idx % RATE_WIDTH == 0 {
+                apply_permutation(&mut self.state);
+                self.idx = 0;
+            }
+        }
+    }
+
+    /// Returns hash of the data absorbed into the hasher.
+    fn finalize(&mut self) -> Self::Digest {
+        // Apply padding specification from https://eprint.iacr.org/2020/1143.pdf, Algorithm 2
+        if self.idx > 0 {
+            self.state[self.idx] += Fp::one();
+            self.idx += 1;
+
+            while self.idx % RATE_WIDTH != 0 {
+                self.state[self.idx] += Fp::zero();
+                self.idx += 1;
+            }
+
+            apply_permutation(&mut self.state);
+            self.idx = 0;
+        }
+
+        RescueDigest::new(self.state[..DIGEST_SIZE].try_into().unwrap())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::thread_rng;
+    use rand_core::OsRng;
 
     #[test]
     fn test_rescue_hash() {
@@ -357,16 +409,35 @@ mod tests {
 
         for (input, expected) in input_data.iter().zip(output_data) {
             let mut hasher = RescueHash::new();
-            hasher.update(input);
+            hasher.absorb_field(input);
 
             assert_eq!(expected, hasher.finalize().as_elements());
-            assert_eq!(expected, RescueHash::digest(input).as_elements());
+            assert_eq!(expected, RescueHash::hash_field(input).as_elements());
+        }
+    }
+
+    #[test]
+    fn test_sequential_hashing() {
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let mut data = [Fp::zero(); 100];
+            for e in data.iter_mut() {
+                *e = Fp::random(&mut rng);
+            }
+
+            let mut hasher = RescueHash::new();
+            for chunk in data.chunks(10) {
+                hasher.absorb_field(chunk);
+            }
+
+            assert_eq!(hasher.finalize(), RescueHash::hash_field(&data));
         }
     }
 
     #[test]
     fn test_serialization() {
-        let mut rng = thread_rng();
+        let mut rng = OsRng;
 
         for _ in 0..100 {
             let mut data = [Fp::zero(); DIGEST_SIZE];
@@ -375,7 +446,7 @@ mod tests {
             }
 
             let mut hasher = RescueHash::new();
-            hasher.update(&data);
+            hasher.absorb_field(&data);
 
             let bytes = hasher.to_bytes();
 
@@ -389,7 +460,7 @@ mod tests {
         }
 
         let mut hasher = RescueHash::new();
-        hasher.update(&data);
+        hasher.absorb_field(&data);
 
         let bytes = [255u8; 72];
 

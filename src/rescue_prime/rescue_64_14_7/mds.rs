@@ -11,7 +11,7 @@ use cheetah::Fp;
 
 /// Maximum Distance Separable matrix for Rescue,
 /// computed using algorithm 4 from <https://eprint.iacr.org/2020/1143.pdf>
-pub const MDS: [Fp; STATE_WIDTH * STATE_WIDTH] = [
+pub(crate) const MDS: [Fp; STATE_WIDTH * STATE_WIDTH] = [
     Fp::new(10009920892075776111),
     Fp::new(7414360360949007414),
     Fp::new(3582998032104467402),

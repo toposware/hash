@@ -6,8 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(unused)]
 /// Base power map of the Rescue S-Box
-pub const ALPHA: u32 = 7;
+pub(crate) const ALPHA: u32 = 7;
 
+#[allow(unused)]
 /// Inverse power map
-pub const INV_ALPHA: u64 = 10540996611094048183;
+pub(crate) const INV_ALPHA: u64 = 10540996611094048183;

@@ -6,8 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// Base power map of the Rescue S-Box
-pub const ALPHA: u32 = 7;
+mod traits;
 
-/// Inverse power map
-pub const INV_ALPHA: u64 = 10540996611094048183;
+/// The Rescue hash function over Cheetah's small
+/// primefield with state width 14 and rate 7.
+#[cfg(feature = "f64")]
+pub mod rescue_64_14_7;
+
+/// The Rescue hash function over Cheetah's small
+/// primefield with state width 8 and rate 4.
+#[cfg(feature = "f64")]
+pub mod rescue_64_8_4;
