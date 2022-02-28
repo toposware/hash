@@ -28,8 +28,4 @@ pub trait Hasher {
     /// Returns a hash of two digests.
     /// This method is intended for use in construction of Merkle trees.
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest;
-
-    /// Returns hash(`seed` || `value`).
-    /// This method is intended for use in random coin sampling contexts.
-    fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest;
 }

@@ -187,21 +187,6 @@ impl Hasher for RescueHash {
 
         RescueDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
     }
-
-    fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
-        // initialize the state as follows:
-        // - seed is copied into the first DIGEST_SIZE elements of the state.
-        // - copy the value into the DIGEST_SIZE + 1 state element
-        // - set the last capacity element to DIGEST_SIZE + 1 (the number of elements to be hashed).
-        let mut state = [Fp::zero(); STATE_WIDTH];
-        state[..DIGEST_SIZE].copy_from_slice(&seed.as_elements());
-        state[DIGEST_SIZE] = Fp::new(value);
-        state[STATE_WIDTH - 1] = Fp::new(DIGEST_SIZE as u64 + 1);
-
-        // apply the Rescue permutation and return the first DIGEST_SIZE elements of the state
-        apply_permutation(&mut state);
-        Self::Digest::new(state[..DIGEST_SIZE].try_into().unwrap())
-    }
 }
 
 #[cfg(test)]
