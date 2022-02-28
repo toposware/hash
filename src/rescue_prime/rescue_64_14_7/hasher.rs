@@ -60,29 +60,6 @@ impl RescueHash {
         RescueDigest::new(self.state[..DIGEST_SIZE].try_into().unwrap())
     }
 
-    /// Returns hash of the provided data.
-    pub fn digest(data: &[Fp]) -> RescueDigest {
-        // initialize state to all zeros
-        let mut state = [Fp::zero(); STATE_WIDTH];
-
-        let mut i = 0;
-        for &element in data.iter() {
-            state[i] += element;
-            i += 1;
-            if i % RATE_WIDTH == 0 {
-                apply_permutation(&mut state);
-                i = 0;
-            }
-        }
-
-        if i > 0 {
-            // TODO: apply proper padding
-            apply_permutation(&mut state);
-        }
-
-        RescueDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
-    }
-
     /// Serializes the current state to an array of bytes
     pub fn to_bytes(&self) -> [u8; 120] {
         let mut res = [0u8; 120];
@@ -116,7 +93,7 @@ impl RescueHash {
     }
 }
 
-impl Hasher for RescueHash {
+impl Hasher<Fp> for RescueHash {
     type Digest = RescueDigest;
 
     fn hash(bytes: &[u8]) -> Self::Digest {
@@ -176,6 +153,28 @@ impl Hasher for RescueHash {
         }
 
         // return the first DIGEST_SIZE elements of the state as hash result
+        RescueDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
+    }
+
+    fn hash_field(bytes: &[Fp]) -> Self::Digest {
+        // initialize state to all zeros
+        let mut state = [Fp::zero(); STATE_WIDTH];
+
+        let mut i = 0;
+        for &element in bytes.iter() {
+            state[i] += element;
+            i += 1;
+            if i % RATE_WIDTH == 0 {
+                apply_permutation(&mut state);
+                i = 0;
+            }
+        }
+
+        if i > 0 {
+            // TODO: apply proper padding
+            apply_permutation(&mut state);
+        }
+
         RescueDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
     }
 
@@ -411,7 +410,7 @@ mod tests {
             hasher.update(input);
 
             assert_eq!(expected, hasher.finalize().as_elements());
-            assert_eq!(expected, RescueHash::digest(input).as_elements());
+            assert_eq!(expected, RescueHash::hash_field(input).as_elements());
         }
     }
 

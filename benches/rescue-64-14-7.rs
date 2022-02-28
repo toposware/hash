@@ -27,7 +27,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         for e in v.iter_mut() {
             *e = Fp::random(OsRng);
         }
-        bench.iter(|| RescueHash::digest(black_box(&v)))
+        bench.iter(|| RescueHash::hash_field(black_box(&v)))
     });
 
     c.bench_function("rescue-64-14-7 - hash 10KB", |bench| {

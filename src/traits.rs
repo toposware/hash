@@ -7,9 +7,7 @@
 // except according to those terms.
 
 use core::fmt::Debug;
-
-// TODO: To support different kind of fields, we'd need them to
-// implement some Field Trait which we can refer to here.
+use group::ff::Field;
 
 /// Defines output type of a cryptographic hash function.
 pub trait Digest: Debug + Default + Copy + Clone + Eq + PartialEq + Send + Sync {
@@ -18,12 +16,15 @@ pub trait Digest: Debug + Default + Copy + Clone + Eq + PartialEq + Send + Sync 
 }
 
 /// Trait for implementing a cryptographic hash function.
-pub trait Hasher {
+pub trait Hasher<F: Field> {
     /// Specifies a digest type returned by this hasher.
     type Digest: Digest;
 
     /// Returns a hash of the provided sequence of bytes.
     fn hash(bytes: &[u8]) -> Self::Digest;
+
+    /// Returns a hash of the provided sequence of field elements.
+    fn hash_field(bytes: &[F]) -> Self::Digest;
 
     /// Returns a hash of two digests.
     /// This method is intended for use in construction of Merkle trees.

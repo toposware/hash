@@ -13,6 +13,7 @@ keywords = ["cryptography", "crypto", "hash"]
 
 [dependencies]
 cheetah = { git = "https://github.com/ToposWare/cheetah.git", branch = "main", default-features = false, optional = true }
+group = { version = "0.11", default-features = false }
 
 [features]
 f64 = ["cheetah"]
