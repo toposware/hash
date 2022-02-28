@@ -6,9 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
-
 use super::traits::RescuePrimeHasher;
 use cheetah::Fp;
 
