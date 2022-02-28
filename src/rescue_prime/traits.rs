@@ -19,9 +19,6 @@ pub trait RescuePrimeHasher<F: Field>: Hasher<F> {
     /// Absorbs a sequence of field elements.
     fn absorb_field(&mut self, input: &[F]);
 
-    /// Applies Rescue-XLIX permutation to the provided state.
-    fn apply_permutation(&mut self);
-
     /// Returns hash of the data absorbed into the hasher.
     fn finalize(&mut self) -> Self::Digest;
 }

@@ -217,7 +217,7 @@ impl RescuePrimeHasher<Fp> for RescueHash {
             self.state[self.idx] += Fp::new(u64::from_le_bytes(buf));
             self.idx += 1;
             if self.idx % RATE_WIDTH == 0 {
-                self.apply_permutation();
+                apply_permutation(&mut self.state);
                 self.idx = 0;
                 num_hashed += RATE_WIDTH;
             }
@@ -230,15 +230,10 @@ impl RescuePrimeHasher<Fp> for RescueHash {
             self.state[self.idx] += element;
             self.idx += 1;
             if self.idx % RATE_WIDTH == 0 {
-                self.apply_permutation();
+                apply_permutation(&mut self.state);
                 self.idx = 0;
             }
         }
-    }
-
-    /// Applies Rescue-XLIX permutation to the provided state.
-    fn apply_permutation(&mut self) {
-        apply_permutation(&mut self.state);
     }
 
     /// Returns hash of the data absorbed into the hasher.
@@ -253,7 +248,7 @@ impl RescuePrimeHasher<Fp> for RescueHash {
                 self.idx += 1;
             }
 
-            self.apply_permutation();
+            apply_permutation(&mut self.state);
             self.idx = 0;
         }
 
