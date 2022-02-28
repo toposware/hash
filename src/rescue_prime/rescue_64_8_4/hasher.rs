@@ -201,6 +201,10 @@ impl RescuePrimeHasher<Fp> for RescueHash {
                 // we need to handle it slightly differently. we also append a byte with value 1
                 // to the end of the string; this pads the string in such a way that adding
                 // trailing zeros results in different hash
+
+                // Compatibility with the binary hash() is not possible because this would require
+                // knowing the total input sequence length at initialization, to write in the capacity
+                // registers. Hence, we prevent length-extension attacks on every absorbed chunk
                 let chunk_len = chunk.len();
                 buf = [0u8; 8];
                 buf[..chunk_len].copy_from_slice(chunk);
