@@ -145,8 +145,16 @@ impl Hasher<Fp> for RescueHash {
             }
         }
 
+        // Apply padding specification from https://eprint.iacr.org/2020/1143.pdf, Algorithm 2
         if i > 0 {
-            // TODO: apply proper padding
+            state[i] += Fp::one();
+            i += 1;
+
+            while i % RATE_WIDTH != 0 {
+                state[i] += Fp::zero();
+                i += 1;
+            }
+
             apply_permutation(&mut state);
         }
 
@@ -231,10 +239,20 @@ impl RescuePrimeHasher<Fp> for RescueHash {
 
     /// Returns hash of the data absorbed into the hasher.
     fn finalize(&mut self) -> Self::Digest {
+        // Apply padding specification from https://eprint.iacr.org/2020/1143.pdf, Algorithm 2
         if self.idx > 0 {
-            // TODO: apply proper padding
-            self.apply_permutation()
+            self.state[self.idx] += Fp::one();
+            self.idx += 1;
+
+            while self.idx % RATE_WIDTH != 0 {
+                self.state[self.idx] += Fp::zero();
+                self.idx += 1;
+            }
+
+            self.apply_permutation();
+            self.idx = 0;
         }
+
         RescueDigest::new(self.state[..DIGEST_SIZE].try_into().unwrap())
     }
 }
