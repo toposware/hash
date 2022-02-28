@@ -10,7 +10,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 extern crate hash;
 use cheetah::Fp;
-use hash::rescue_64_14_7::{digest::RescueDigest, hasher::RescueHash};
+use hash::rescue_64_14_7::{RescueDigest, RescueHash};
 use hash::traits::Hasher;
 use rand::rngs::OsRng;
 use rand::thread_rng;

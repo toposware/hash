@@ -13,15 +13,18 @@ use super::traits::RescuePrimeHasher;
 use cheetah::Fp;
 
 /// Digest for Rescue
-pub mod digest;
+mod digest;
 /// Hasher for Rescue
-pub mod hasher;
+mod hasher;
 /// MDS matrix for Rescue
-pub mod mds;
+mod mds;
 /// Round constants for Rescue
-pub mod round_constants;
+mod round_constants;
 /// S-Box for Rescue
-pub mod sbox;
+mod sbox;
+
+pub use digest::RescueDigest;
+pub use hasher::RescueHash;
 
 // RESCUE CONSTANTS
 // ================================================================================================
@@ -61,7 +64,7 @@ fn square_assign_multi_and_multiply<const N: usize, const M: usize>(
 #[inline(always)]
 /// Applies exponentiation of the current hash
 /// state elements with the Rescue S-Box.
-pub fn apply_sbox(state: &mut [Fp; STATE_WIDTH]) {
+pub(crate) fn apply_sbox(state: &mut [Fp; STATE_WIDTH]) {
     state.iter_mut().for_each(|v| {
         let t2 = v.square();
         let t4 = t2.square();
@@ -72,7 +75,7 @@ pub fn apply_sbox(state: &mut [Fp; STATE_WIDTH]) {
 #[inline(always)]
 /// Applies exponentiation of the current hash state
 /// elements with the Rescue inverse S-Box.
-pub fn apply_inv_sbox(state: &mut [Fp; STATE_WIDTH]) {
+pub(crate) fn apply_inv_sbox(state: &mut [Fp; STATE_WIDTH]) {
     let mut t1 = *state;
     t1.iter_mut().for_each(|t| *t = t.square());
 
@@ -95,7 +98,7 @@ pub fn apply_inv_sbox(state: &mut [Fp; STATE_WIDTH]) {
 #[inline(always)]
 /// Applies matrix-vector multiplication of the current
 /// hash state with the Rescue MDS matrix.
-pub fn apply_mds(state: &mut [Fp; STATE_WIDTH]) {
+pub(crate) fn apply_mds(state: &mut [Fp; STATE_WIDTH]) {
     let mut result = [Fp::zero(); STATE_WIDTH];
     for (i, r) in result.iter_mut().enumerate() {
         for (j, s) in state.iter().enumerate() {
@@ -110,7 +113,7 @@ pub fn apply_mds(state: &mut [Fp; STATE_WIDTH]) {
 // ================================================================================================
 
 /// Applies Rescue-XLIX permutation to the provided state.
-pub fn apply_permutation(state: &mut [Fp; STATE_WIDTH]) {
+pub(crate) fn apply_permutation(state: &mut [Fp; STATE_WIDTH]) {
     for i in 0..NUM_HASH_ROUNDS {
         apply_round(state, i);
     }
@@ -119,7 +122,7 @@ pub fn apply_permutation(state: &mut [Fp; STATE_WIDTH]) {
 /// Rescue-XLIX round function;
 /// implementation based on algorithm 3 of <https://eprint.iacr.org/2020/1143.pdf>
 #[inline(always)]
-pub fn apply_round(state: &mut [Fp; STATE_WIDTH], step: usize) {
+pub(crate) fn apply_round(state: &mut [Fp; STATE_WIDTH], step: usize) {
     // determine which round constants to use
     let ark = round_constants::ARK[step % NUM_HASH_ROUNDS];
 

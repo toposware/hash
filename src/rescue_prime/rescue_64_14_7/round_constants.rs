@@ -11,7 +11,7 @@ use cheetah::Fp;
 
 /// Additive Round Keys constants for Rescue,
 /// computed using algorithm 5 from <https://eprint.iacr.org/2020/1143.pdf>
-pub const ARK: [[Fp; STATE_WIDTH * 2]; NUM_HASH_ROUNDS] = [
+pub(crate) const ARK: [[Fp; STATE_WIDTH * 2]; NUM_HASH_ROUNDS] = [
     [
         Fp::new(15349847925801231643),
         Fp::new(10378730422892138550),
