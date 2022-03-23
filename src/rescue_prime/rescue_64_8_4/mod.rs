@@ -35,7 +35,7 @@ pub const RATE_WIDTH: usize = 4;
 /// Seven elements (32-bytes) are returned as digest.
 pub const DIGEST_SIZE: usize = 4;
 
-/// The number of rounds is set to 4 to provide 128-bit security level with 40% security margin;
+/// The number of rounds is set to 7 to provide 128-bit security level with 40% security margin;
 /// computed using algorithm 7 from <https://eprint.iacr.org/2020/1143.pdf>
 pub const NUM_HASH_ROUNDS: usize = 7;
 
