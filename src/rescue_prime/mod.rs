@@ -14,6 +14,11 @@ mod traits;
 pub mod rescue_64_14_7;
 
 /// The Rescue hash function over Cheetah's small
+/// primefield with state width 12 and rate 8.
+#[cfg(feature = "f64")]
+pub mod rescue_64_12_8;
+
+/// The Rescue hash function over Cheetah's small
 /// primefield with state width 8 and rate 4.
 #[cfg(feature = "f64")]
 pub mod rescue_64_8_4;
