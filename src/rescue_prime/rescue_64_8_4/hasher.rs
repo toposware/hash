@@ -151,7 +151,7 @@ impl Hasher<Fp> for RescueHash {
             i += 1;
 
             while i % RATE_WIDTH != 0 {
-                state[i] += Fp::zero();
+                state[i] = Fp::zero();
                 i += 1;
             }
 
@@ -421,7 +421,7 @@ mod tests {
         let mut rng = OsRng;
 
         for _ in 0..100 {
-            let mut data = [Fp::zero(); 100];
+            let mut data = [Fp::zero(); 120];
             for e in data.iter_mut() {
                 *e = Fp::random(&mut rng);
             }
