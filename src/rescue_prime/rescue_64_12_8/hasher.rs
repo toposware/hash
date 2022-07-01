@@ -163,8 +163,8 @@ impl Hasher<Fp> for RescueHash {
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
         let mut state = [Fp::zero(); STATE_WIDTH];
-        state[..DIGEST_SIZE].copy_from_slice(&values[0].as_elements());
-        state[DIGEST_SIZE..RATE_WIDTH].copy_from_slice(&values[1].as_elements());
+        state[..DIGEST_SIZE].copy_from_slice(values[0].as_elements());
+        state[DIGEST_SIZE..RATE_WIDTH].copy_from_slice(values[1].as_elements());
         apply_permutation(&mut state);
 
         RescueDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
@@ -419,8 +419,8 @@ mod tests {
             let mut hasher = RescueHash::new();
             hasher.absorb_field(input);
 
-            assert_eq!(expected, hasher.finalize().as_elements());
-            assert_eq!(expected, RescueHash::hash_field(input).as_elements());
+            assert_eq!(expected, hasher.finalize().to_elements());
+            assert_eq!(expected, RescueHash::hash_field(input).to_elements());
         }
     }
 

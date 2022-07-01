@@ -12,7 +12,7 @@ use group::ff::Field;
 /// Defines output type of a cryptographic hash function.
 pub trait Digest: Debug + Default + Copy + Clone + Eq + PartialEq + Send + Sync {
     /// Returns this digest serialized into an array of bytes.
-    fn as_bytes(&self) -> [u8; 32];
+    fn to_bytes(&self) -> [u8; 32];
 }
 
 /// Trait for implementing a cryptographic hash function.

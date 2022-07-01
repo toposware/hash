@@ -26,13 +26,18 @@ impl RescueDigest {
         Self(value)
     }
 
+    /// Returns a reference to the wrapped digest
+    pub fn as_elements(&self) -> &[Fp; DIGEST_SIZE] {
+        &self.0
+    }
+
     /// Returns the wrapped digest
-    pub fn as_elements(&self) -> [Fp; DIGEST_SIZE] {
+    pub fn to_elements(&self) -> [Fp; DIGEST_SIZE] {
         self.0
     }
 
     /// Returns a `Vec<Fp>` from the provided digest slice
-    pub fn digests_as_elements(digests: &[Self]) -> Vec<Fp> {
+    pub fn digests_to_elements(digests: &[Self]) -> Vec<Fp> {
         let mut res = Vec::with_capacity(digests.len() * DIGEST_SIZE);
         for digest in digests {
             for i in 0..DIGEST_SIZE {
@@ -51,7 +56,7 @@ impl Default for RescueDigest {
 }
 
 impl Digest for RescueDigest {
-    fn as_bytes(&self) -> [u8; 32] {
+    fn to_bytes(&self) -> [u8; 32] {
         let mut digest = [0u8; 32];
         digest[0..8].copy_from_slice(&self.0[0].to_bytes());
         digest[8..16].copy_from_slice(&self.0[1].to_bytes());
