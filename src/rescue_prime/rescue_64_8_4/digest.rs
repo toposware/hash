@@ -66,3 +66,34 @@ impl Digest for RescueDigest {
         digest
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand_core::OsRng;
+
+    #[test]
+    fn digest_elements() {
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let mut array = [Fp::zero(); DIGEST_SIZE];
+            for item in array.iter_mut() {
+                *item = Fp::random(&mut rng);
+            }
+
+            let digest = RescueDigest::new(array);
+            assert_eq!(digest.to_elements(), array);
+            assert_eq!(&digest.to_elements(), digest.as_elements());
+            assert_eq!(
+                digest.as_elements(),
+                &RescueDigest::digests_to_elements(&[digest])[..]
+            );
+        }
+
+        let digest = RescueDigest::default();
+        assert_eq!(digest.to_elements(), [Fp::zero(); DIGEST_SIZE]);
+        assert_eq!(digest.as_elements(), &vec![Fp::zero(); DIGEST_SIZE][..]);
+        assert_eq!(digest.to_bytes(), [0u8; 32]);
+    }
+}
