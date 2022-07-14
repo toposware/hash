@@ -23,5 +23,8 @@ pub mod error;
 /// Traits defining a hash function
 pub mod traits;
 
+#[cfg(feature = "f64")]
+mod f64_utils;
+
 mod rescue_prime;
 pub use rescue_prime::*;

@@ -9,6 +9,8 @@
 use super::traits::RescuePrimeHasher;
 use cheetah::Fp;
 
+use crate::f64_utils::{apply_rescue_inv_sbox, apply_rescue_sbox};
+
 /// Digest for Rescue
 mod digest;
 /// Hasher for Rescue
@@ -17,8 +19,6 @@ mod hasher;
 mod mds;
 /// Round constants for Rescue
 mod round_constants;
-/// S-Box for Rescue
-mod sbox;
 
 pub use digest::RescueDigest;
 pub use hasher::RescueHash;
@@ -41,56 +41,6 @@ pub const NUM_HASH_ROUNDS: usize = 7;
 
 // HELPER FUNCTIONS
 // ================================================================================================
-
-#[inline(always)]
-/// Squares each element of `base` M times, then performs
-/// a product term by term with `tail`.
-fn square_assign_multi_and_multiply<const N: usize, const M: usize>(
-    base: [Fp; N],
-    tail: [Fp; N],
-) -> [Fp; N] {
-    let mut result = base;
-    for _ in 0..M {
-        result.iter_mut().for_each(|r| *r = r.square());
-    }
-
-    result.iter_mut().zip(&tail).for_each(|(r, t)| *r *= t);
-    result
-}
-
-#[inline(always)]
-/// Applies exponentiation of the current hash
-/// state elements with the Rescue S-Box.
-pub(crate) fn apply_sbox(state: &mut [Fp; STATE_WIDTH]) {
-    state.iter_mut().for_each(|v| {
-        let t2 = v.square();
-        let t4 = t2.square();
-        *v *= t2 * t4;
-    });
-}
-
-#[inline(always)]
-/// Applies exponentiation of the current hash state
-/// elements with the Rescue inverse S-Box.
-pub(crate) fn apply_inv_sbox(state: &mut [Fp; STATE_WIDTH]) {
-    let mut t1 = *state;
-    t1.iter_mut().for_each(|t| *t = t.square());
-
-    let mut t2 = t1;
-    t2.iter_mut().for_each(|t| *t = t.square());
-
-    let t3 = square_assign_multi_and_multiply::<STATE_WIDTH, 3>(t2, t2);
-    let t4 = square_assign_multi_and_multiply::<STATE_WIDTH, 6>(t3, t3);
-    let t4 = square_assign_multi_and_multiply::<STATE_WIDTH, 12>(t4, t4);
-    let t5 = square_assign_multi_and_multiply::<STATE_WIDTH, 6>(t4, t3);
-    let t6 = square_assign_multi_and_multiply::<STATE_WIDTH, 31>(t5, t5);
-
-    for (i, s) in state.iter_mut().enumerate() {
-        let a = (t6[i].square() * t5[i]).square().square();
-        let b = t1[i] * t2[i] * *s;
-        *s = a * b;
-    }
-}
 
 #[inline(always)]
 /// Applies matrix-vector multiplication of the current
@@ -124,14 +74,14 @@ pub(crate) fn apply_round(state: &mut [Fp; STATE_WIDTH], step: usize) {
     let ark = round_constants::ARK[step % NUM_HASH_ROUNDS];
 
     // apply first half of Rescue round
-    apply_sbox(state);
+    apply_rescue_sbox(state);
     apply_mds(state);
     for i in 0..STATE_WIDTH {
         state[i] += ark[i];
     }
 
     // apply second half of Rescue round
-    apply_inv_sbox(state);
+    apply_rescue_inv_sbox(state);
     apply_mds(state);
     for i in 0..STATE_WIDTH {
         state[i] += ark[STATE_WIDTH + i];
@@ -221,84 +171,6 @@ mod tests {
         }
 
         state.copy_from_slice(&result);
-    }
-
-    #[test]
-    fn test_square_assign_multi_and_multiply() {
-        let mut state = [Fp::zero(); STATE_WIDTH];
-        let zeros = [Fp::zero(); STATE_WIDTH];
-        let ones = [Fp::one(); STATE_WIDTH];
-        let mut rng = OsRng;
-
-        for _ in 0..10 {
-            for s in state.iter_mut() {
-                *s = Fp::random(&mut rng);
-            }
-
-            assert_eq!(
-                square_assign_multi_and_multiply::<STATE_WIDTH, 0>(state, zeros),
-                zeros
-            );
-            assert_eq!(
-                square_assign_multi_and_multiply::<STATE_WIDTH, 0>(zeros, state),
-                zeros
-            );
-            assert_eq!(
-                square_assign_multi_and_multiply::<STATE_WIDTH, 0>(ones, ones),
-                ones
-            );
-            assert_eq!(
-                square_assign_multi_and_multiply::<STATE_WIDTH, 0>(state, ones),
-                state
-            );
-
-            assert_eq!(
-                square_assign_multi_and_multiply::<STATE_WIDTH, 1>(state, zeros),
-                zeros
-            );
-            assert_eq!(
-                square_assign_multi_and_multiply::<STATE_WIDTH, 1>(zeros, state),
-                zeros
-            );
-            assert_eq!(
-                square_assign_multi_and_multiply::<STATE_WIDTH, 1>(ones, ones),
-                ones
-            );
-        }
-    }
-
-    #[test]
-    fn test_rescue_sbox() {
-        let mut state = [Fp::zero(); STATE_WIDTH];
-        let mut rng = OsRng;
-
-        for _ in 0..100 {
-            for s in state.iter_mut() {
-                *s = Fp::random(&mut rng);
-            }
-
-            // Check Forward S-Box
-
-            let mut state_2 = state;
-            state_2.iter_mut().for_each(|v| {
-                *v = v.exp(sbox::ALPHA as u64);
-            });
-
-            apply_sbox(&mut state);
-
-            assert_eq!(state, state_2);
-
-            // Check Backward S-Box
-
-            let mut state_2 = state;
-            state_2.iter_mut().for_each(|v| {
-                *v = v.exp(sbox::INV_ALPHA);
-            });
-
-            apply_inv_sbox(&mut state);
-
-            assert_eq!(state, state_2);
-        }
     }
 
     #[test]
