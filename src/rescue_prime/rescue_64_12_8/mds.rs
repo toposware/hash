@@ -7,153 +7,347 @@
 // except according to those terms.
 
 use super::STATE_WIDTH;
+#[cfg(test)]
 use cheetah::Fp;
 
+// FFT-BASED MDS MULTIPLICATION HELPER FUNCTIONS
+// ================================================================================================
+
+/// This module contains helper functions as well as constants used to perform the vector-matrix
+/// multiplication step of the Rescue prime permutation. The special form of this circulant MDS matrix
+/// allows to reduce the vector-matrix multiplication to a Hadamard product of two vectors in
+/// "frequency domain". This follows from the fact that every circulant matrix has the columns
+/// of the discrete Fourier transform matrix as orthogonal eigenvectors.
+/// The implementation also avoids the use of 3-point FFTs, and 3-point iFFTs, and substitutes that
+/// with explicit expressions. It also avoids, due to the form of the matrix in the frequency domain,
+/// divisions by 2 and repeated modular reductions. This is because of the explicit choice of
+/// an MDS matrix that has small powers of 2 entries in frequency domain.
+/// The following implementation has been taken from the corresponding one in Winterfell for the same
+/// underlying prime field.
+
+// Rescue-Prime MDS matrix in frequency domain.
+// More precisely, this is the output of the three 4-point (real) FFTs of the first column of
+// the MDS matrix i.e. just before the multiplication with the appropriate twiddle factors
+// and application of the final four 3-point FFT in order to get the full 12-point FFT.
+// The entries have been scaled appropriately in order to avoid divisions by 2 in iFFT2 and iFFT4.+
+const MDS_FREQ_BLOCK_ONE: [i64; 3] = [16, 8, 16];
+const MDS_FREQ_BLOCK_TWO: [(i64, i64); 3] = [(-1, 2), (-1, 1), (4, 8)];
+const MDS_FREQ_BLOCK_THREE: [i64; 3] = [-8, 1, 1];
+
+// We use split 3 x 4 FFT transform in order to transform our vectors into the frequency domain.
+#[inline(always)]
+pub(crate) fn mds_multiply_freq(state: [u64; STATE_WIDTH]) -> [u64; STATE_WIDTH] {
+    let [s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11] = state;
+
+    let (u0, u1, u2) = fft4_real([s0, s3, s6, s9]);
+    let (u4, u5, u6) = fft4_real([s1, s4, s7, s10]);
+    let (u8, u9, u10) = fft4_real([s2, s5, s8, s11]);
+
+    // This is where the multiplication in frequency domain is done. More precisely, and with
+    // the appropriate permuations in between, the sequence of
+    // 3-point FFTs --> multiplication by twiddle factors --> Hadamard multiplication -->
+    // 3 point iFFTs --> multiplication by (inverse) twiddle factors
+    // is "squashed" into one step composed of the functions "block1", "block2" and "block3".
+    // The expressions in the aforementioned functions are the result of explicit computations
+    // combined with the Karatsuba trick for the multiplication of Complex numbers.
+
+    let [v0, v4, v8] = block1([u0, u4, u8], MDS_FREQ_BLOCK_ONE);
+    let [v1, v5, v9] = block2([u1, u5, u9], MDS_FREQ_BLOCK_TWO);
+    let [v2, v6, v10] = block3([u2, u6, u10], MDS_FREQ_BLOCK_THREE);
+    // The 4th block is not computed as it is similar to the 2nd one, up to complex conjugation,
+    // and is, due to the use of the real FFT and iFFT, redundant.
+
+    let [s0, s3, s6, s9] = ifft4_real((v0, v1, v2));
+    let [s1, s4, s7, s10] = ifft4_real((v4, v5, v6));
+    let [s2, s5, s8, s11] = ifft4_real((v8, v9, v10));
+
+    [s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11]
+}
+
+// We use the real FFT to avoid redundant computations. See https://www.mdpi.com/2076-3417/12/9/4700
+#[inline(always)]
+fn fft2_real(x: [u64; 2]) -> [i64; 2] {
+    [(x[0] as i64 + x[1] as i64), (x[0] as i64 - x[1] as i64)]
+}
+
+#[inline(always)]
+fn ifft2_real(y: [i64; 2]) -> [u64; 2] {
+    // We avoid divisions by 2 by appropriately scaling the MDS matrix constants.
+    [(y[0] + y[1]) as u64, (y[0] - y[1]) as u64]
+}
+
+#[inline(always)]
+fn fft4_real(x: [u64; 4]) -> (i64, (i64, i64), i64) {
+    let [z0, z2] = fft2_real([x[0], x[2]]);
+    let [z1, z3] = fft2_real([x[1], x[3]]);
+    let y0 = z0 + z1;
+    let y1 = (z2, -z3);
+    let y2 = z0 - z1;
+    (y0, y1, y2)
+}
+
+#[inline(always)]
+fn ifft4_real(y: (i64, (i64, i64), i64)) -> [u64; 4] {
+    // In calculating 'z0' and 'z1', division by 2 is avoided by appropriately scaling
+    // the MDS matrix constants.
+    let z0 = y.0 + y.2;
+    let z1 = y.0 - y.2;
+    let z2 = y.1 .0;
+    let z3 = -y.1 .1;
+
+    let [x0, x2] = ifft2_real([z0, z2]);
+    let [x1, x3] = ifft2_real([z1, z3]);
+
+    [x0, x1, x2, x3]
+}
+
+#[inline(always)]
+fn block1(x: [i64; 3], y: [i64; 3]) -> [i64; 3] {
+    let [x0, x1, x2] = x;
+    let [y0, y1, y2] = y;
+    let z0 = x0 * y0 + x1 * y2 + x2 * y1;
+    let z1 = x0 * y1 + x1 * y0 + x2 * y2;
+    let z2 = x0 * y2 + x1 * y1 + x2 * y0;
+
+    [z0, z1, z2]
+}
+
+#[inline(always)]
+fn block2(x: [(i64, i64); 3], y: [(i64, i64); 3]) -> [(i64, i64); 3] {
+    let [(x0r, x0i), (x1r, x1i), (x2r, x2i)] = x;
+    let [(y0r, y0i), (y1r, y1i), (y2r, y2i)] = y;
+    let x0s = x0r + x0i;
+    let x1s = x1r + x1i;
+    let x2s = x2r + x2i;
+    let y0s = y0r + y0i;
+    let y1s = y1r + y1i;
+    let y2s = y2r + y2i;
+
+    // Compute x0​y0 ​− ix1​y2​ − ix2​y1​ using Karatsuba for complex numbers multiplication
+    let m0 = (x0r * y0r, x0i * y0i);
+    let m1 = (x1r * y2r, x1i * y2i);
+    let m2 = (x2r * y1r, x2i * y1i);
+    let z0r = (m0.0 - m0.1) + (x1s * y2s - m1.0 - m1.1) + (x2s * y1s - m2.0 - m2.1);
+    let z0i = (x0s * y0s - m0.0 - m0.1) + (-m1.0 + m1.1) + (-m2.0 + m2.1);
+    let z0 = (z0r, z0i);
+
+    // Compute x0​y1​ + x1​y0​ − ix2​y2 using Karatsuba for complex numbers multiplication
+    let m0 = (x0r * y1r, x0i * y1i);
+    let m1 = (x1r * y0r, x1i * y0i);
+    let m2 = (x2r * y2r, x2i * y2i);
+    let z1r = (m0.0 - m0.1) + (m1.0 - m1.1) + (x2s * y2s - m2.0 - m2.1);
+    let z1i = (x0s * y1s - m0.0 - m0.1) + (x1s * y0s - m1.0 - m1.1) + (-m2.0 + m2.1);
+    let z1 = (z1r, z1i);
+
+    // Compute x0​y2​ + x1​y1 ​+ x2​y0​ using Karatsuba for complex numbers multiplication
+    let m0 = (x0r * y2r, x0i * y2i);
+    let m1 = (x1r * y1r, x1i * y1i);
+    let m2 = (x2r * y0r, x2i * y0i);
+    let z2r = (m0.0 - m0.1) + (m1.0 - m1.1) + (m2.0 - m2.1);
+    let z2i = (x0s * y2s - m0.0 - m0.1) + (x1s * y1s - m1.0 - m1.1) + (x2s * y0s - m2.0 - m2.1);
+    let z2 = (z2r, z2i);
+
+    [z0, z1, z2]
+}
+
+#[inline(always)]
+fn block3(x: [i64; 3], y: [i64; 3]) -> [i64; 3] {
+    let [x0, x1, x2] = x;
+    let [y0, y1, y2] = y;
+    let z0 = x0 * y0 - x1 * y2 - x2 * y1;
+    let z1 = x0 * y1 + x1 * y0 - x2 * y2;
+    let z2 = x0 * y2 + x1 * y1 + x2 * y0;
+
+    [z0, z1, z2]
+}
+
+// MDS
+// ================================================================================================
+
 /// Maximum Distance Separable matrix for Rescue,
-/// computed using algorithm 4 from <https://eprint.iacr.org/2020/1143.pdf>
+#[cfg(test)]
 pub(crate) const MDS: [Fp; STATE_WIDTH * STATE_WIDTH] = [
-    Fp::new(2108866337646019936),
-    Fp::new(11223275256334781131),
-    Fp::new(2318414738826783588),
-    Fp::new(11240468238955543594),
-    Fp::new(8007389560317667115),
-    Fp::new(11080831380224887131),
-    Fp::new(3922954383102346493),
-    Fp::new(17194066286743901609),
-    Fp::new(152620255842323114),
-    Fp::new(7203302445933022224),
-    Fp::new(17781531460838764471),
-    Fp::new(2306881200),
-    Fp::new(3368836954250922620),
-    Fp::new(5531382716338105518),
-    Fp::new(7747104620279034727),
-    Fp::new(14164487169476525880),
-    Fp::new(4653455932372793639),
-    Fp::new(5504123103633670518),
-    Fp::new(3376629427948045767),
-    Fp::new(1687083899297674997),
-    Fp::new(8324288417826065247),
-    Fp::new(17651364087632826504),
-    Fp::new(15568475755679636039),
-    Fp::new(4656488262337620150),
-    Fp::new(2560535215714666606),
-    Fp::new(10793518538122219186),
-    Fp::new(408467828146985886),
-    Fp::new(13894393744319723897),
-    Fp::new(17856013635663093677),
-    Fp::new(14510101432365346218),
-    Fp::new(12175743201430386993),
-    Fp::new(12012700097100374591),
-    Fp::new(976880602086740182),
-    Fp::new(3187015135043748111),
-    Fp::new(4630899319883688283),
-    Fp::new(17674195666610532297),
-    Fp::new(10940635879119829731),
-    Fp::new(9126204055164541072),
-    Fp::new(13441880452578323624),
-    Fp::new(13828699194559433302),
-    Fp::new(6245685172712904082),
-    Fp::new(3117562785727957263),
-    Fp::new(17389107632996288753),
-    Fp::new(3643151412418457029),
-    Fp::new(10484080975961167028),
-    Fp::new(4066673631745731889),
-    Fp::new(8847974898748751041),
-    Fp::new(9548808324754121113),
-    Fp::new(15656099696515372126),
-    Fp::new(309741777966979967),
-    Fp::new(16075523529922094036),
-    Fp::new(5384192144218250710),
-    Fp::new(15171244241641106028),
-    Fp::new(6660319859038124593),
-    Fp::new(6595450094003204814),
-    Fp::new(15330207556174961057),
-    Fp::new(2687301105226976975),
-    Fp::new(15907414358067140389),
-    Fp::new(2767130804164179683),
-    Fp::new(8135839249549115549),
-    Fp::new(14687393836444508153),
-    Fp::new(8122848807512458890),
-    Fp::new(16998154830503301252),
-    Fp::new(2904046703764323264),
-    Fp::new(11170142989407566484),
-    Fp::new(5448553946207765015),
-    Fp::new(9766047029091333225),
-    Fp::new(3852354853341479440),
-    Fp::new(14577128274897891003),
-    Fp::new(11994931371916133447),
-    Fp::new(8299269445020599466),
-    Fp::new(2859592328380146288),
-    Fp::new(4920761474064525703),
-    Fp::new(13379538658122003618),
-    Fp::new(3169184545474588182),
-    Fp::new(15753261541491539618),
-    Fp::new(622292315133191494),
-    Fp::new(14052907820095169428),
-    Fp::new(5159844729950547044),
-    Fp::new(17439978194716087321),
-    Fp::new(9945483003842285313),
-    Fp::new(13647273880020281344),
-    Fp::new(14750994260825376),
-    Fp::new(12575187259316461486),
-    Fp::new(3371852905554824605),
-    Fp::new(8886257005679683950),
-    Fp::new(15677115160380392279),
-    Fp::new(13242906482047961505),
-    Fp::new(12149996307978507817),
-    Fp::new(1427861135554592284),
-    Fp::new(4033726302273030373),
-    Fp::new(14761176804905342155),
-    Fp::new(11465247508084706095),
-    Fp::new(12112647677590318112),
-    Fp::new(17343938135425110721),
-    Fp::new(14654483060427620352),
-    Fp::new(5421794552262605237),
-    Fp::new(14201164512563303484),
-    Fp::new(5290621264363227639),
-    Fp::new(1020180205893205576),
-    Fp::new(14311345105258400438),
-    Fp::new(7828111500457301560),
-    Fp::new(9436759291445548340),
-    Fp::new(5716067521736967068),
-    Fp::new(15357555109169671716),
-    Fp::new(4131452666376493252),
-    Fp::new(16785275933585465720),
-    Fp::new(11180136753375315897),
-    Fp::new(10451661389735482801),
-    Fp::new(12128852772276583847),
-    Fp::new(10630876800354432923),
-    Fp::new(6884824371838330777),
-    Fp::new(16413552665026570512),
-    Fp::new(13637837753341196082),
-    Fp::new(2558124068257217718),
-    Fp::new(4327919242598628564),
-    Fp::new(4236040195908057312),
-    Fp::new(2081029262044280559),
-    Fp::new(2047510589162918469),
-    Fp::new(6835491236529222042),
-    Fp::new(5675273097893923172),
-    Fp::new(8120839782755215647),
-    Fp::new(9856415804450870143),
-    Fp::new(1960632704307471239),
-    Fp::new(15279057263127523057),
-    Fp::new(17999325337309257121),
-    Fp::new(72970456904683065),
-    Fp::new(8899624805082057509),
-    Fp::new(16980481565524365258),
-    Fp::new(6412696708929498357),
-    Fp::new(13917768671775544479),
-    Fp::new(5505378218427096880),
-    Fp::new(10318314766641004576),
-    Fp::new(17320192463105632563),
-    Fp::new(11540812969169097044),
-    Fp::new(7270556942018024148),
-    Fp::new(4755326086930560682),
-    Fp::new(2193604418377108959),
-    Fp::new(11681945506511803967),
-    Fp::new(8000243866012209465),
-    Fp::new(6746478642521594042),
-    Fp::new(12096331252283646217),
-    Fp::new(13208137848575217268),
-    Fp::new(5548519654341606996),
+    Fp::new(7),
+    Fp::new(23),
+    Fp::new(8),
+    Fp::new(26),
+    Fp::new(13),
+    Fp::new(10),
+    Fp::new(9),
+    Fp::new(7),
+    Fp::new(6),
+    Fp::new(22),
+    Fp::new(21),
+    Fp::new(8),
+    Fp::new(8),
+    Fp::new(7),
+    Fp::new(23),
+    Fp::new(8),
+    Fp::new(26),
+    Fp::new(13),
+    Fp::new(10),
+    Fp::new(9),
+    Fp::new(7),
+    Fp::new(6),
+    Fp::new(22),
+    Fp::new(21),
+    Fp::new(21),
+    Fp::new(8),
+    Fp::new(7),
+    Fp::new(23),
+    Fp::new(8),
+    Fp::new(26),
+    Fp::new(13),
+    Fp::new(10),
+    Fp::new(9),
+    Fp::new(7),
+    Fp::new(6),
+    Fp::new(22),
+    Fp::new(22),
+    Fp::new(21),
+    Fp::new(8),
+    Fp::new(7),
+    Fp::new(23),
+    Fp::new(8),
+    Fp::new(26),
+    Fp::new(13),
+    Fp::new(10),
+    Fp::new(9),
+    Fp::new(7),
+    Fp::new(6),
+    Fp::new(6),
+    Fp::new(22),
+    Fp::new(21),
+    Fp::new(8),
+    Fp::new(7),
+    Fp::new(23),
+    Fp::new(8),
+    Fp::new(26),
+    Fp::new(13),
+    Fp::new(10),
+    Fp::new(9),
+    Fp::new(7),
+    Fp::new(7),
+    Fp::new(6),
+    Fp::new(22),
+    Fp::new(21),
+    Fp::new(8),
+    Fp::new(7),
+    Fp::new(23),
+    Fp::new(8),
+    Fp::new(26),
+    Fp::new(13),
+    Fp::new(10),
+    Fp::new(9),
+    Fp::new(9),
+    Fp::new(7),
+    Fp::new(6),
+    Fp::new(22),
+    Fp::new(21),
+    Fp::new(8),
+    Fp::new(7),
+    Fp::new(23),
+    Fp::new(8),
+    Fp::new(26),
+    Fp::new(13),
+    Fp::new(10),
+    Fp::new(10),
+    Fp::new(9),
+    Fp::new(7),
+    Fp::new(6),
+    Fp::new(22),
+    Fp::new(21),
+    Fp::new(8),
+    Fp::new(7),
+    Fp::new(23),
+    Fp::new(8),
+    Fp::new(26),
+    Fp::new(13),
+    Fp::new(13),
+    Fp::new(10),
+    Fp::new(9),
+    Fp::new(7),
+    Fp::new(6),
+    Fp::new(22),
+    Fp::new(21),
+    Fp::new(8),
+    Fp::new(7),
+    Fp::new(23),
+    Fp::new(8),
+    Fp::new(26),
+    Fp::new(26),
+    Fp::new(13),
+    Fp::new(10),
+    Fp::new(9),
+    Fp::new(7),
+    Fp::new(6),
+    Fp::new(22),
+    Fp::new(21),
+    Fp::new(8),
+    Fp::new(7),
+    Fp::new(23),
+    Fp::new(8),
+    Fp::new(8),
+    Fp::new(26),
+    Fp::new(13),
+    Fp::new(10),
+    Fp::new(9),
+    Fp::new(7),
+    Fp::new(6),
+    Fp::new(22),
+    Fp::new(21),
+    Fp::new(8),
+    Fp::new(7),
+    Fp::new(23),
+    Fp::new(23),
+    Fp::new(8),
+    Fp::new(26),
+    Fp::new(13),
+    Fp::new(10),
+    Fp::new(9),
+    Fp::new(7),
+    Fp::new(6),
+    Fp::new(22),
+    Fp::new(21),
+    Fp::new(8),
+    Fp::new(7),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::super::apply_mds;
+    use super::*;
+    use rand_core::OsRng;
+
+    #[inline(always)]
+    fn apply_mds_naive(state: &mut [Fp; STATE_WIDTH]) {
+        let mut result = [Fp::zero(); STATE_WIDTH];
+        for (i, r) in result.iter_mut().enumerate() {
+            for (j, s) in state.iter().enumerate() {
+                *r += MDS[i * STATE_WIDTH + j] * s;
+            }
+        }
+
+        state.copy_from_slice(&result);
+    }
+
+    #[test]
+    fn test_mds_layer() {
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let mut v1 = [Fp::zero(); STATE_WIDTH];
+            let mut v2;
+
+            for v in v1.iter_mut() {
+                *v = Fp::random(&mut rng);
+            }
+            v2 = v1;
+
+            apply_mds_naive(&mut v1);
+            apply_mds(&mut v2);
+
+            assert_eq!(v1, v2);
+        }
+    }
+}
