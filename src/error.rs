@@ -7,7 +7,7 @@
 // except according to those terms.
 
 /// Errors which can occur during serialization methods.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SerializationError {
     /// The bytes do not represent a valid field element.
     InvalidFieldElement,
