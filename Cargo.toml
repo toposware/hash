@@ -18,7 +18,7 @@ group = { version = "0.11", default-features = false }
 [features]
 f64 = ["cheetah"]
 default = ["std"]
-std = []
+std = ["cheetah/std"]
 
 [dev-dependencies]
 criterion = "0.3"

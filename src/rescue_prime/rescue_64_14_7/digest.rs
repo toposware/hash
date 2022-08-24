@@ -72,6 +72,8 @@ impl Digest for RescueDigest {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
     use rand_core::OsRng;
 
     #[test]

@@ -37,6 +37,9 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
+#[cfg(test)]
+extern crate std;
+
 /// Custom error types
 pub mod error;
 /// Traits defining a hash function
