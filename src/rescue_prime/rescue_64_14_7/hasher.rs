@@ -164,7 +164,10 @@ impl Hasher<Fp> for RescueHash {
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
         let mut state = [Fp::zero(); STATE_WIDTH];
         state[..RATE_WIDTH].copy_from_slice(values[0].as_elements());
-        state[RATE_WIDTH..STATE_WIDTH].copy_from_slice(values[1].as_elements());
+        apply_permutation(&mut state);
+        for (index, value) in values[1].as_elements().iter().enumerate() {
+            state[index] += value;
+        }
         apply_permutation(&mut state);
 
         RescueDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
