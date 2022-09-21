@@ -53,3 +53,6 @@ pub use rescue_prime::*;
 
 mod anemoi;
 pub use anemoi::*;
+
+mod griffin;
+pub use griffin::*;
