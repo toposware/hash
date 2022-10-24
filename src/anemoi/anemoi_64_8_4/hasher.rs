@@ -293,9 +293,9 @@ impl AnemoiJive<Fp> for AnemoiHash {
         let mut state = elems.try_into().unwrap();
         apply_permutation(&mut state);
 
-        let mut result = [Fp::zero(); NUM_COLUMNS];
+        let mut result: [Fp; NUM_COLUMNS] = state[0..NUM_COLUMNS].try_into().unwrap();
         for (i, r) in result.iter_mut().enumerate() {
-            *r = elems[i] + elems[i + NUM_COLUMNS] + state[i] + state[i + NUM_COLUMNS];
+            *r += elems[i] + elems[i + NUM_COLUMNS] + state[i + NUM_COLUMNS];
         }
 
         result.to_vec()
