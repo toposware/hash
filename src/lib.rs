@@ -19,7 +19,7 @@
 //! # Features
 //!
 //! The `f64` feature, not activated by default, allows to compile hash
-//! instantiations defined over the Cheetah primefield (also known as
+//! instantiations defined over the primefield (also known as
 //! Goldilocks field) Fp with p = 2**64 - 2**32 + 1.
 //!
 //! The `hash` library by default relies on the Rust standard library.

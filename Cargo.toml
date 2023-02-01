@@ -17,7 +17,7 @@ group = { version = "0.11", default-features = false }
 
 [features]
 f64 = ["cheetah"]
-default = ["std"]
+default = ["std", "f64"]
 std = ["cheetah/std"]
 
 [dev-dependencies]
@@ -25,16 +25,6 @@ criterion = "0.3"
 rand_core = "0.6"
 
 [[bench]]
-name = "rescue-64-8-4"
-harness = false
-required-features = ["f64"]
-
-[[bench]]
-name = "rescue-64-12-8"
-harness = false
-required-features = ["f64"]
-
-[[bench]]
-name = "rescue-64-14-7"
+name = "rescue_prime"
 harness = false
 required-features = ["f64"]
