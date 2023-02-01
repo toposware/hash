@@ -24,6 +24,12 @@ std = ["cheetah/std"]
 criterion = "0.3"
 rand_core = "0.6"
 
+
+[[bench]]
+name = "griffin"
+harness = false
+required-features = ["f64"]
+
 [[bench]]
 name = "rescue_prime"
 harness = false

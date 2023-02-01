@@ -50,3 +50,6 @@ mod f64_utils;
 
 mod rescue_prime;
 pub use rescue_prime::*;
+
+mod griffin;
+pub use griffin::*;
