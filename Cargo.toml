@@ -26,6 +26,11 @@ rand_core = "0.6"
 
 
 [[bench]]
+name = "anemoi"
+harness = false
+required-features = ["f64"]
+
+[[bench]]
 name = "griffin"
 harness = false
 required-features = ["f64"]
