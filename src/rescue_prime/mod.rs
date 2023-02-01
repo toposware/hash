@@ -6,14 +6,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod traits;
-
-/// The Rescue hash function over Fp64's small
+/// The Rescue hash function over Fp's small
 /// primefield with state width 12 and rate 8.
 #[cfg(feature = "f64")]
 pub mod rescue_64_12_8;
 
-/// The Rescue hash function over Fp64's small
+/// The Rescue hash function over Fp's small
 /// primefield with state width 8 and rate 4.
 #[cfg(feature = "f64")]
 pub mod rescue_64_8_4;

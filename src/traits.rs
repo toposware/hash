@@ -20,11 +20,8 @@ pub trait Hasher<F: Field> {
     /// Specifies a digest type returned by this hasher.
     type Digest: Digest;
 
-    /// Returns a hash of the provided sequence of bytes.
-    fn hash(bytes: &[u8]) -> Self::Digest;
-
     /// Returns a hash of the provided sequence of field elements.
-    fn hash_field(bytes: &[F]) -> Self::Digest;
+    fn hash(bytes: &[F]) -> Self::Digest;
 
     /// Returns a hash of two digests.
     /// This method is intended for use in construction of Merkle trees.

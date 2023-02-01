@@ -9,14 +9,15 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 extern crate hash;
+use cheetah::Fp;
 use hash::anemoi_64_8_4;
 use hash::traits::Hasher;
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("anemoi-64-8-4 - merge", |bench| {
         let v: [anemoi_64_8_4::AnemoiDigest; 2] = [
-            anemoi_64_8_4::AnemoiHash::hash(&[1u8]),
-            anemoi_64_8_4::AnemoiHash::hash(&[2u8]),
+            anemoi_64_8_4::AnemoiHash::hash(&[Fp::zero()]),
+            anemoi_64_8_4::AnemoiHash::hash(&[Fp::one()]),
         ];
 
         bench.iter(|| anemoi_64_8_4::AnemoiHash::merge(black_box(&v)))

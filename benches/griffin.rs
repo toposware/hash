@@ -9,14 +9,15 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 extern crate hash;
+use cheetah::Fp;
 use hash::traits::Hasher;
 use hash::{griffin_64_12_8, griffin_64_8_4};
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("griffin-64-8-4 - merge", |bench| {
         let v: [griffin_64_8_4::GriffinDigest; 2] = [
-            griffin_64_8_4::GriffinHash::hash(&[1u8]),
-            griffin_64_8_4::GriffinHash::hash(&[2u8]),
+            griffin_64_8_4::GriffinHash::hash(&[Fp::zero()]),
+            griffin_64_8_4::GriffinHash::hash(&[Fp::one()]),
         ];
 
         bench.iter(|| griffin_64_8_4::GriffinHash::merge(black_box(&v)))
@@ -24,8 +25,8 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("griffin-64-12-8 - merge", |bench| {
         let v: [griffin_64_12_8::GriffinDigest; 2] = [
-            griffin_64_12_8::GriffinHash::hash(&[1u8]),
-            griffin_64_12_8::GriffinHash::hash(&[2u8]),
+            griffin_64_12_8::GriffinHash::hash(&[Fp::zero()]),
+            griffin_64_12_8::GriffinHash::hash(&[Fp::one()]),
         ];
 
         bench.iter(|| griffin_64_12_8::GriffinHash::merge(black_box(&v)))

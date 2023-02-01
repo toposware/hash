@@ -6,7 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::traits::GriffinHasher;
 use cheetah::fp_arith_utils::reduce_u96;
 use cheetah::Fp;
 

@@ -6,7 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::traits::RescuePrimeHasher;
 use cheetah::Fp;
 
 use crate::f64_utils::{apply_rescue_inv_sbox, apply_rescue_sbox};

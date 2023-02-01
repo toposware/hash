@@ -6,9 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod traits;
-pub use traits::GriffinHasher;
-
 /// The Griffin hash function over Fp's small
 /// primefield with state width 12 and rate 8.
 #[cfg(feature = "f64")]

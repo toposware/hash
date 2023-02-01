@@ -6,9 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod traits;
-pub use traits::{AnemoiHasher, AnemoiJive};
-
 /// The Anemoi hash function over Fp's small
 /// primefield with state width 8 and rate 4.
 #[cfg(feature = "f64")]
